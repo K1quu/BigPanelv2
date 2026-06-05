@@ -46,11 +46,11 @@ export default function Dashboard() {
     const [srv, hist, ply] = await Promise.all([
       api.get('/servers'),
       api.get(`/stats/history?range=${range}`),
-      api.get('/players'),
+      api.get('/players?limit=50'),
     ]);
     setServers(srv.data);
     setHistory(hist.data);
-    setPlayers(ply.data);
+    setPlayers(ply.data.players || ply.data);
   }
 
   useEffect(() => { loadAll(); }, [range]);
@@ -62,7 +62,7 @@ export default function Dashboard() {
         setServers(msg.servers);
       }
       if (msg.type === 'player_join' || msg.type === 'player_leave') {
-        api.get('/players').then(r => setPlayers(r.data)).catch(() => {});
+        api.get('/players?limit=50').then(r => setPlayers(r.data.players || r.data)).catch(() => {});
       }
     });
     return () => { off(); disconnectWS(); };

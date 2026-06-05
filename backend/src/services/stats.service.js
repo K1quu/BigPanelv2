@@ -2,6 +2,7 @@
 const db = require('../db/database');
 const mc = require('./minecraft.service');
 const rcon = require('./rcon.service');
+const fake = require('./fakeplayers.service');
 const events = require('../events');
 
 // In-memory server state (read by API endpoints without DB hit)
@@ -110,10 +111,21 @@ async function fastTick() {
   if (onlinePlayers.lobby.size > 0) state.lobby.players = onlinePlayers.lobby.size;
   if (onlinePlayers.game.size  > 0) state.game.players  = onlinePlayers.game.size;
 
-  // Velocity displayed online: time-based simulation + 5x per real backend player.
-  const backendTotal = state.lobby.players + state.game.players;
+  // --- Velocity simulation: time-of-day curve + fake players + 5x real ---
+  const realBackend = state.lobby.players + state.game.players;
   const anyBackendOnline = state.lobby.online || state.game.online;
-  state.velocity.players = computeVelocityOnline() + backendTotal * 5;
+  const simTarget = computeVelocityOnline();
+
+  // Sync fake players to target
+  fake.sync(simTarget, now);
+
+  // Inflate per-server displays with fake players
+  state.lobby.players = (state.lobby.players || 0) + fake.getCount('lobby');
+  state.game.players  = (state.game.players  || 0) + fake.getCount('game');
+  state.lobby.maxPlayers = Math.max(state.lobby.maxPlayers || 0, 5000);
+  state.game.maxPlayers  = Math.max(state.game.maxPlayers  || 0, 5000);
+
+  state.velocity.players = simTarget + realBackend * 5;
   state.velocity.maxPlayers = 15000;
   if (anyBackendOnline) state.velocity.online = true;
 
