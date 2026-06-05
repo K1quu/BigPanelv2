@@ -252,10 +252,10 @@ function backfillHistory() {
     'INSERT INTO online_history(server_id, player_count, tps, timestamp) VALUES(?,?,?,?)'
   );
   let added = 0;
-  const tx = db.transaction(() => {
+  db.exec('BEGIN');
+  try {
     for (let ts = lastTs + STEP; ts < now; ts += STEP) {
       const vel = velocityAtTime(ts);
-      // Lobby: 50-100 range, smooth fluctuation. Game: rest.
       const lob = 50 + Math.round((Math.sin(ts * 0.013) * 0.5 + 0.5) * 50);
       const gam = Math.max(0, vel - lob);
       insert.run('velocity', vel, null, ts);
@@ -263,8 +263,12 @@ function backfillHistory() {
       insert.run('game',     gam, 20, ts);
       added += 3;
     }
-  });
-  tx();
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    console.error('[stats] backfill failed:', err.message);
+    return;
+  }
   if (added > 0) console.log(`[stats] Backfilled ${added} synthetic history points (gap: ${gap}s)`);
 }
 
