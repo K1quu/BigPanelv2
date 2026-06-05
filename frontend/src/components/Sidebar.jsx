@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Server, Users, Terminal, Puzzle, LogOut } from 'lucide-react';
+import { LayoutDashboard, Server, Users, Terminal, Puzzle, LogOut, Settings } from 'lucide-react';
 import { useAuth } from '../App';
 import api from '../services/api';
 
@@ -9,6 +9,7 @@ const nav = [
   { to: '/players', label: 'Игроки',   Icon: Users },
   { to: '/console', label: 'Консоль',  Icon: Terminal },
   { to: '/plugins', label: 'Плагины',  Icon: Puzzle },
+  { to: '/users',   label: 'Настройки',Icon: Settings, onlySuperadmin: true },
 ];
 
 const ROLE_LABEL = { superadmin: 'Супер-админ', admin: 'Администратор', moderator: 'Модератор' };
@@ -39,7 +40,7 @@ export default function Sidebar() {
       {/* Nav */}
       <nav className="flex-1 px-2 py-4 flex flex-col gap-0.5">
         <div className="text-[10px] text-fg-3 uppercase tracking-widest px-2 mb-2">Навигация</div>
-        {nav.map(({ to, label, Icon }) => (
+        {nav.filter(item => !item.onlySuperadmin || user?.role === 'superadmin').map(({ to, label, Icon }) => (
           <NavLink
             key={to}
             to={to}

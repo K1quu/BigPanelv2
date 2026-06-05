@@ -25,9 +25,14 @@ async function tick() {
     mc.pingServer(process.env.GAME_HOST    || '127.0.0.1', process.env.GAME_PORT    || 25567),
   ]);
 
-  Object.assign(state.velocity, { ...velPing, updatedAt: now });
-  Object.assign(state.lobby,    { ...lobPing, updatedAt: now });
-  Object.assign(state.game,     { ...gamePing, updatedAt: now });
+  // Keep last known player count if server temporarily unreachable
+  const merge = (cur, ping) => ({
+    ...cur, ...ping, updatedAt: now,
+    players: ping.online ? ping.players : cur.players,
+  });
+  Object.assign(state.velocity, merge(state.velocity, velPing));
+  Object.assign(state.lobby,    merge(state.lobby,    lobPing));
+  Object.assign(state.game,     merge(state.game,     gamePing));
 
   // --- TPS + player list via RCON (only if server is online) ---
   if (lobPing.online) {

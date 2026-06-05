@@ -26,24 +26,28 @@ function parsePlugins(rconResponse) {
 }
 
 async function pingServer(host, port) {
-  try {
-    const result = await status(host, parseInt(port, 10), { timeout: 4000, enableSRV: false });
-    const motd = result.description
-      ? (typeof result.description === 'string'
-          ? result.description
-          : result.description.descriptionText || result.description.text || '')
-      : '';
-    return {
-      online: true,
-      players: result.players.online,
-      maxPlayers: result.players.max,
-      version: result.version.name,
-      motd: stripColorCodes(motd),
-      sample: (result.players.sample || []).map(p => p.name),
-    };
-  } catch {
-    return { online: false, players: 0, maxPlayers: 0, version: '', motd: '', sample: [] };
+  // Try up to 2 times — Velocity can drop occasional SLP requests
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const result = await status(host, parseInt(port, 10), { timeout: 5000, enableSRV: false });
+      const motd = result.description
+        ? (typeof result.description === 'string'
+            ? result.description
+            : result.description.descriptionText || result.description.text || '')
+        : '';
+      return {
+        online: true,
+        players: result.players.online,
+        maxPlayers: result.players.max,
+        version: result.version.name,
+        motd: stripColorCodes(motd),
+        sample: (result.players.sample || []).map(p => p.name),
+      };
+    } catch {
+      if (attempt < 1) await new Promise(r => setTimeout(r, 1500));
+    }
   }
+  return { online: false, players: 0, maxPlayers: 0, version: '', motd: '', sample: [] };
 }
 
 async function getTPS(serverId) {
