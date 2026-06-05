@@ -4,12 +4,13 @@ const db = require('../db/database');
 const rcon = require('../services/rcon.service');
 const { requireAuth, requireRole } = require('../middleware/auth.middleware');
 
-// Current online players (from latest sessions with no left_at)
+// Current online players — deduplicated, latest open session per player
 router.get('/', requireAuth, (req, res) => {
   const rows = db.prepare(`
-    SELECT username, server_id, joined_at
+    SELECT username, server_id, MAX(joined_at) AS joined_at
     FROM player_sessions
     WHERE left_at IS NULL
+    GROUP BY username, server_id
     ORDER BY joined_at DESC
   `).all();
   res.json(rows);

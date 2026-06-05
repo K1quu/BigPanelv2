@@ -74,12 +74,17 @@ function updateSessions(serverId, currentList, now) {
   const curr = new Set(currentList);
   const ts = Math.floor(now / 1000);
 
-  // Joined
+  // Joined — only insert if no open session already exists
   for (const name of curr) {
     if (!prev.has(name)) {
-      db.prepare(
-        'INSERT INTO player_sessions(username, server_id, joined_at) VALUES(?,?,?)'
-      ).run(name, serverId, ts);
+      const open = db.prepare(
+        'SELECT 1 FROM player_sessions WHERE username=? AND server_id=? AND left_at IS NULL'
+      ).get(name, serverId);
+      if (!open) {
+        db.prepare(
+          'INSERT INTO player_sessions(username, server_id, joined_at) VALUES(?,?,?)'
+        ).run(name, serverId, ts);
+      }
       events.emit('player_join', { username: name, server: serverId });
     }
   }
@@ -115,6 +120,14 @@ function getState() {
 }
 
 function startStats() {
+  // Close any orphaned open sessions from previous run
+  const closed = db.prepare(
+    'UPDATE player_sessions SET left_at=? WHERE left_at IS NULL'
+  ).run(Math.floor(Date.now() / 1000));
+  if (closed.changes > 0) {
+    console.log(`[stats] Closed ${closed.changes} orphaned session(s) from previous run`);
+  }
+
   tick().catch(err => console.error('[stats] initial tick failed:', err.message));
   cron.schedule('*/30 * * * * *', () => {
     tick().catch(err => console.error('[stats] tick failed:', err.message));
