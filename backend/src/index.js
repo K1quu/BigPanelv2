@@ -33,6 +33,7 @@ app.use('/api/plugins', require('./routes/plugins.routes'));
 app.use('/api/worlds',  require('./routes/worlds.routes'));
 app.use('/api/users',   require('./routes/users.routes'));
 app.use('/api/audit',   require('./routes/audit.routes'));
+app.use('/api/debug',   require('./routes/debug.routes'));
 
 // Serve built frontend in production
 const frontendDist = path.join(__dirname, '../../frontend/dist');
