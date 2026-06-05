@@ -1,5 +1,6 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { createContext, useContext, useState, useEffect } from 'react';
+import { Menu, X } from 'lucide-react';
 import api from './services/api';
 import Sidebar from './components/Sidebar';
 import Login    from './pages/Login';
@@ -14,10 +15,42 @@ export const AuthCtx = createContext(null);
 export function useAuth() { return useContext(AuthCtx); }
 
 function Layout({ children }) {
+  const [open, setOpen] = useState(false);
+  const location = useLocation();
+
+  // Close mobile menu on route change
+  useEffect(() => { setOpen(false); }, [location.pathname]);
+
   return (
     <div className="flex min-h-screen bg-bg-0">
-      <Sidebar />
-      <main className="flex-1 min-w-0 overflow-auto">{children}</main>
+      <Sidebar mobileOpen={open} onClose={() => setOpen(false)} />
+
+      {/* Mobile backdrop */}
+      {open && (
+        <div
+          onClick={() => setOpen(false)}
+          className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-30 animate-fade-in"
+        />
+      )}
+
+      <main className="flex-1 min-w-0 overflow-auto">
+        {/* Mobile header */}
+        <div className="md:hidden flex items-center justify-between px-4 h-12 border-b border-border-1 bg-bg-1 sticky top-0 z-20">
+          <button
+            onClick={() => setOpen(true)}
+            className="p-1.5 rounded text-fg-1 hover:bg-bg-hover"
+          >
+            <Menu size={18} />
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded bg-gradient-to-br from-grass to-grass-dim flex items-center justify-center text-[#0a1a07] text-[10px] font-mono font-bold">MC</div>
+            <span className="text-fg-0 font-semibold text-sm">MC Panel</span>
+          </div>
+          <div className="w-7" />
+        </div>
+
+        {children}
+      </main>
     </div>
   );
 }

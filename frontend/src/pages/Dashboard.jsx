@@ -87,7 +87,7 @@ export default function Dashboard() {
   const avgTPS = servers.filter(s => s.tps).reduce((a, s, _, arr) => a + s.tps / arr.length, 0);
 
   return (
-    <div className="p-8 w-full animate-fade-in">
+    <div className="p-4 md:p-8 w-full animate-fade-in">
       <div className="mb-6">
         <h1 className="text-fg-0 text-xl font-semibold tracking-tight">Дашборд</h1>
         <p className="text-fg-3 text-xs mt-1 flex items-center gap-2">
@@ -97,7 +97,7 @@ export default function Dashboard() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
         <KPI label="Всего онлайн"  value={totalOnline} Icon={Users}    color="text-grass-bright" />
         <KPI label="Серверов онлайн" value={`${onlineCount}/3`} Icon={Server} color="text-status-info" />
         <KPI label="Средний TPS" value={avgTPS ? avgTPS.toFixed(1) : '—'} Icon={Activity} color={avgTPS >= 18 ? 'text-grass-bright' : 'text-status-warn'} />
@@ -148,7 +148,7 @@ export default function Dashboard() {
       </div>
 
       {/* Bottom grid */}
-      <div className="grid grid-cols-[2fr_1fr] gap-4 w-full">
+      <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-4 w-full">
         {/* Server list */}
         <div className="bg-bg-1 border border-border-1 rounded-lg overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border-1">

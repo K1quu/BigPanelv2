@@ -30,7 +30,7 @@ export default function Plugins() {
   useEffect(() => { load(); }, [serverId]);
 
   return (
-    <div className="p-8 w-full animate-fade-in">
+    <div className="p-4 md:p-8 w-full animate-fade-in">
       <div className="flex items-end justify-between mb-6">
         <div>
           <h1 className="text-fg-0 text-xl font-semibold tracking-tight">Плагины</h1>
@@ -69,7 +69,7 @@ export default function Plugins() {
       )}
 
       {loading && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {[...Array(9)].map((_, i) => (
             <div key={i} className="h-14 bg-bg-1 border border-border-1 rounded-lg animate-pulse" />
           ))}
@@ -77,7 +77,7 @@ export default function Plugins() {
       )}
 
       {!loading && plugins.length > 0 && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {plugins.map((name, i) => (
             <div key={i} className="flex items-center gap-3 bg-bg-1 border border-border-1 rounded-lg px-4 py-3 hover:border-border-2 transition-colors animate-fade-in">
               <Puzzle size={14} className="text-grass flex-shrink-0" />

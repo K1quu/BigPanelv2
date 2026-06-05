@@ -26,7 +26,7 @@ export default function Console() {
   }
 
   return (
-    <div className="p-8 w-full animate-fade-in flex flex-col" style={{ height: '100vh' }}>
+    <div className="p-4 md:p-8 w-full animate-fade-in flex flex-col" style={{ height: '100vh' }}>
       <div className="flex items-end justify-between mb-5">
         <div>
           <h1 className="text-fg-0 text-xl font-semibold tracking-tight">RCON Консоль</h1>

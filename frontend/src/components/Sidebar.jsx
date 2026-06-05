@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Server, Users, Terminal, Puzzle, LogOut, Settings } from 'lucide-react';
+import { LayoutDashboard, Server, Users, Terminal, Puzzle, LogOut, Settings, X } from 'lucide-react';
 import { useAuth } from '../App';
 import api from '../services/api';
 
@@ -14,7 +14,7 @@ const nav = [
 
 const ROLE_LABEL = { superadmin: 'Супер-админ', admin: 'Администратор', moderator: 'Модератор' };
 
-export default function Sidebar() {
+export default function Sidebar({ mobileOpen = false, onClose }) {
   const { user, setUser } = useAuth();
   const navigate = useNavigate();
 
@@ -25,7 +25,18 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="w-[220px] flex-shrink-0 bg-bg-1 border-r border-border-1 flex flex-col sticky top-0 h-screen">
+    <aside className={`
+      w-[240px] md:w-[220px] flex-shrink-0 bg-bg-1 border-r border-border-1 flex flex-col
+      fixed md:sticky top-0 h-screen z-40 transition-transform duration-200
+      ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+    `}>
+      {/* Close button on mobile */}
+      <button
+        onClick={onClose}
+        className="md:hidden absolute top-3 right-3 p-1.5 text-fg-2 hover:text-fg-0 rounded"
+      >
+        <X size={16} />
+      </button>
       {/* Brand */}
       <div className="flex items-center gap-3 px-4 py-5 border-b border-border-1">
         <div className="w-8 h-8 rounded-md bg-gradient-to-br from-grass to-grass-dim flex items-center justify-center shadow-lg">

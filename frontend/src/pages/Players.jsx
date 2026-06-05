@@ -59,7 +59,7 @@ export default function Players() {
   }
 
   return (
-    <div className="p-8 w-full animate-fade-in">
+    <div className="p-4 md:p-8 w-full animate-fade-in">
       <div className="flex items-end justify-between mb-6 gap-4 flex-wrap">
         <div>
           <h1 className="text-fg-0 text-xl font-semibold tracking-tight">Игроки</h1>

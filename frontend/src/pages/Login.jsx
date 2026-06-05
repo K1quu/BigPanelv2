@@ -43,7 +43,7 @@ export default function Login() {
       </div>
 
       {/* Card */}
-      <div className="relative w-[400px] animate-fade-up" style={{ '--delay': '200ms' }}>
+      <div className="relative w-full max-w-[400px] mx-4 animate-fade-up" style={{ '--delay': '200ms' }}>
         {/* Green top border glow */}
         <div className="absolute inset-0 rounded-xl pointer-events-none"
           style={{ background: 'linear-gradient(180deg, rgba(90,196,77,0.25), transparent 40%)', padding: '1px', borderRadius: '20px' }}>

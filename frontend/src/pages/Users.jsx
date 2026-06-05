@@ -99,7 +99,7 @@ export default function Users() {
   }
 
   return (
-    <div className="p-8 w-full animate-fade-in">
+    <div className="p-4 md:p-8 w-full animate-fade-in">
       <div className="mb-6">
         <h1 className="text-fg-0 text-xl font-semibold tracking-tight">Пользователи</h1>
         <p className="text-fg-3 text-xs mt-1">Управление доступом к панели</p>
@@ -130,7 +130,7 @@ export default function Users() {
           {showForm && (
             <div className="bg-bg-1 border border-border-2 rounded-lg p-5 mb-4 animate-fade-in">
               <div className="text-fg-0 font-medium text-sm mb-4">Новый пользователь</div>
-              <form onSubmit={createUser} className="grid grid-cols-4 gap-3 items-end">
+              <form onSubmit={createUser} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
                 <div className="flex flex-col gap-1.5">
                   <span className="text-[11px] text-fg-2 uppercase tracking-wider">Логин</span>
                   <input value={form.username} onChange={e => setForm(f=>({...f,username:e.target.value}))}

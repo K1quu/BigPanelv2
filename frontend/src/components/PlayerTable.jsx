@@ -38,7 +38,8 @@ export default function PlayerTable({ players, mode = 'online', onAction }) {
   }
 
   return (
-    <table className="w-full text-sm">
+    <div className="overflow-x-auto">
+    <table className="w-full text-sm min-w-[480px]">
       <thead>
         <tr className="border-b border-border-1 text-[10px] uppercase text-fg-3 tracking-wider">
           <th className="text-left py-3 px-4 font-medium">Игрок</th>
@@ -103,5 +104,6 @@ export default function PlayerTable({ players, mode = 'online', onAction }) {
         ))}
       </tbody>
     </table>
+    </div>
   );
 }

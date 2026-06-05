@@ -46,7 +46,7 @@ function ServerDetail({ server, onAction }) {
 
   return (
     <div className="bg-bg-1 border border-border-1 rounded-lg overflow-hidden">
-      <div className="px-6 py-5 border-b border-border-1 flex items-center justify-between">
+      <div className="px-4 md:px-6 py-4 md:py-5 border-b border-border-1 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-4">
           <div className={`w-10 h-10 rounded-md flex items-center justify-center text-sm font-bold font-mono
             ${server.type === 'proxy' ? 'bg-[rgba(79,179,255,0.15)] text-status-info' : 'bg-[rgba(90,196,77,0.15)] text-grass-bright'}`}>
@@ -90,14 +90,14 @@ function ServerDetail({ server, onAction }) {
         </div>
       </div>
 
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         {server.motd && (
           <div className="text-fg-2 text-sm mb-4 px-3 py-2 bg-bg-2 rounded-md font-mono text-xs border border-border-1">
             {server.motd}
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-5">
           <Metric label="Игроки" value={`${server.players}/${server.maxPlayers || '—'}`} color="text-fg-0" />
           {server.type !== 'proxy' && (
             <Metric label="TPS" value={server.tps?.toFixed(1)} color={tpsCls} />
@@ -134,7 +134,7 @@ export default function Servers() {
   }, []);
 
   return (
-    <div className="p-8 w-full animate-fade-in">
+    <div className="p-4 md:p-8 w-full animate-fade-in">
       <div className="mb-6">
         <h1 className="text-fg-0 text-xl font-semibold tracking-tight">Серверы</h1>
         <p className="text-fg-3 text-xs mt-1">Статус и метрики всех серверов кластера</p>
