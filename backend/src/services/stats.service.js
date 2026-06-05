@@ -154,7 +154,10 @@ function startStats() {
     console.log(`[stats] Closed ${closed.changes} orphaned session(s) from previous run`);
   }
 
-  fastTick().catch(err => console.error('[stats] initial tick failed:', err.message));
+  // Run initial fast + slow so TPS appears immediately
+  fastTick()
+    .then(() => slowTick())
+    .catch(err => console.error('[stats] initial tick failed:', err.message));
 
   // Fast: every 5 seconds for realtime UI
   setInterval(() => {

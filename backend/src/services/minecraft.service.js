@@ -8,8 +8,17 @@ function stripColorCodes(str) {
 
 function parseTPS(rconResponse) {
   const clean = stripColorCodes(rconResponse);
-  const match = clean.match(/(\d+\.?\d*)/);
-  return match ? parseFloat(match[1]) : null;
+  // Paper / Patina formats:
+  //   "TPS from last 1m, 5m, 15m: 20.0, 20.0, 20.0"
+  //   "TPS from last 5s, 10s, 1m, 5m, 15m: *20.0, 20.0, 20.0, 20.0, 20.0"
+  // Take the last colon-separated section, then the first number in it.
+  const afterColon = clean.split(':').slice(1).join(':');
+  // Strip leading markers like '*' (means "current TPS") that Paper adds
+  const numMatch = afterColon.match(/(\d+(?:\.\d+)?)/);
+  if (numMatch) return parseFloat(numMatch[1]);
+  // Fallback: any number ≥ 1 in the whole string
+  const all = [...clean.matchAll(/(\d+\.\d+)/g)].map(m => parseFloat(m[1]));
+  return all.length ? all[0] : null;
 }
 
 function parsePlayerList(rconResponse) {
