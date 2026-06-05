@@ -22,12 +22,7 @@ router.get('/players/:serverId', requireAuth, requireRole('admin'), async (req, 
   try {
     const raw = await rcon.send(serverId, 'list');
     result.rconRawList = raw;
-    result.rconParsed = mc.parsePlayerList ? null : null;
-    // parsePlayerList isn't exported — call inline
-    const match = raw.match(/players online:\s*(.+)/i);
-    result.rconParsed = match && match[1].trim()
-      ? match[1].split(',').map(s => s.replace(/§./g, '').trim()).filter(Boolean)
-      : [];
+    result.rconParsed = mc.parsePlayerList(raw);
   } catch (err) {
     result.rconError = err.message;
   }

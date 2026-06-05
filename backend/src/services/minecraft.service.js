@@ -36,9 +36,38 @@ function parseTPS(rconResponse) {
 }
 
 function parsePlayerList(rconResponse) {
-  const match = rconResponse.match(/players online:\s*(.+)/i);
-  if (!match || !match[1].trim()) return [];
-  return match[1].split(',').map(p => stripColorCodes(p).trim()).filter(Boolean);
+  const clean = stripColorCodes(rconResponse);
+  const lines = clean.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length === 0) return [];
+
+  // English vanilla/Paper: "There are 1 of a max of 20 players online: name1, name2"
+  // Patina EN:            "Players online: name1, name2"
+  const en = clean.match(/(?:players online|of\s+\d+\s+players online):\s*(.+)/i);
+  if (en && en[1].trim()) {
+    return splitNames(en[1]);
+  }
+
+  // Russian Patina format (single line): "Сейчас 1 из 180 игроков на сервере."
+  // Followed by group lines: "Admins: K1qu"  /  "VIP: foo, bar"
+  // Collect names from all lines that look like "GroupName: names..."
+  const names = [];
+  for (let i = 1; i < lines.length; i++) {
+    const m = lines[i].match(/^[^:]+:\s*(.+)$/);
+    if (m && m[1].trim()) names.push(...splitNames(m[1]));
+  }
+  if (names.length > 0) return names;
+
+  // Final fallback — try any line containing a colon
+  const anyColon = clean.match(/:\s*([A-Za-z0-9_, ]+)\s*$/m);
+  if (anyColon && anyColon[1].trim()) return splitNames(anyColon[1]);
+
+  return [];
+}
+
+function splitNames(s) {
+  return s.split(/[,]/)
+    .map(p => p.trim())
+    .filter(p => p && /^[A-Za-z0-9_]{1,16}$/.test(p));
 }
 
 function parsePlugins(rconResponse) {
@@ -107,4 +136,4 @@ async function getPlugins(serverId) {
   }
 }
 
-module.exports = { pingServer, getTPS, getPlayerList, getPlugins, parsePlugins, stripColorCodes };
+module.exports = { pingServer, getTPS, getPlayerList, getPlugins, parsePlugins, parsePlayerList, stripColorCodes };
