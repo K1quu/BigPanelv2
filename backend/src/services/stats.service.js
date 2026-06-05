@@ -14,6 +14,69 @@ const state = {
 // Track online players per server for session detection
 const onlinePlayers = { lobby: new Set(), game: new Set() };
 
+/* ── Simulated Velocity online by hour (Moscow time) ── */
+// Key points: [hour, [min, max]]
+const HOURLY_RANGE = [
+  [0,  [250,  450]],   // 00:00 — поздняя ночь
+  [3,  [100,  250]],   // 03:00 — мёртвая ночь
+  [6,  [200,  500]],   // 06:00 — рассвет
+  [9,  [400,  900]],   // 09:00 — утро, школа/работа
+  [12, [900,  1600]],  // 12:00 — обед, свободны школьники
+  [15, [1300, 2000]],  // 15:00 — день, после школы
+  [18, [1900, 2700]],  // 18:00 — вечерний пик
+  [21, [2200, 2900]],  // 21:00 — прайм-тайм
+  [23, [1200, 1800]],  // 23:00 — спад
+];
+
+let velocityState = { current: null, target: null, nextTargetAt: 0 };
+
+function rangeForHour(hour) {
+  // Linear interpolation between two nearest keypoints
+  for (let i = 0; i < HOURLY_RANGE.length - 1; i++) {
+    const [h1, r1] = HOURLY_RANGE[i];
+    const [h2, r2] = HOURLY_RANGE[i + 1];
+    if (hour >= h1 && hour <= h2) {
+      const t = (hour - h1) / (h2 - h1);
+      return [
+        r1[0] + (r2[0] - r1[0]) * t,
+        r1[1] + (r2[1] - r1[1]) * t,
+      ];
+    }
+  }
+  // wrap-around: between 23 and 24 → 00
+  const [h1, r1] = HOURLY_RANGE[HOURLY_RANGE.length - 1];
+  const [, r2] = HOURLY_RANGE[0];
+  const t = (hour - h1) / (24 - h1);
+  return [r1[0] + (r2[0] - r1[0]) * t, r1[1] + (r2[1] - r1[1]) * t];
+}
+
+function computeVelocityOnline() {
+  const now = Date.now();
+  const d = new Date();
+  // Hour in fractional form for smoothness
+  const hour = d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
+  const [minVal, maxVal] = rangeForHour(hour);
+
+  // Pick a new target every 30-60 seconds inside current range
+  if (now >= velocityState.nextTargetAt || velocityState.target === null) {
+    velocityState.target = Math.round(minVal + Math.random() * (maxVal - minVal));
+    velocityState.nextTargetAt = now + (30 + Math.random() * 30) * 1000;
+  }
+
+  // First tick — snap to a random value inside range
+  if (velocityState.current === null) {
+    velocityState.current = velocityState.target;
+  }
+
+  // Smooth drift toward target (10% per tick) + tiny jitter
+  const delta = velocityState.target - velocityState.current;
+  velocityState.current = Math.round(velocityState.current + delta * 0.1 + (Math.random() - 0.5) * 4);
+
+  // Clamp to range
+  velocityState.current = Math.max(50, Math.min(3000, velocityState.current));
+  return velocityState.current;
+}
+
 /**
  * Fast tick — every 5 seconds. Ping only + RCON player list.
  * Broadcasts to WebSocket clients for near-realtime UI.
@@ -47,11 +110,10 @@ async function fastTick() {
   if (onlinePlayers.lobby.size > 0) state.lobby.players = onlinePlayers.lobby.size;
   if (onlinePlayers.game.size  > 0) state.game.players  = onlinePlayers.game.size;
 
-  // Velocity displayed online: 2500 base + 5x per real backend player.
-  // Always online as long as any backend is up.
+  // Velocity displayed online: time-based simulation + 5x per real backend player.
   const backendTotal = state.lobby.players + state.game.players;
   const anyBackendOnline = state.lobby.online || state.game.online;
-  state.velocity.players = 2500 + backendTotal * 5;
+  state.velocity.players = computeVelocityOnline() + backendTotal * 5;
   state.velocity.maxPlayers = 15000;
   if (anyBackendOnline) state.velocity.online = true;
 
