@@ -45,12 +45,12 @@ export default function ServerCard({ server }) {
         />
       </div>
 
-      {type !== 'proxy' && (
+      {type !== 'proxy' && tps !== null && tps !== undefined && (
         <div className="flex items-center gap-1.5">
           <Zap size={12} className={tpsColor(tps)} />
           <span className="text-fg-2 text-xs">TPS:</span>
           <span className={`text-xs font-semibold num ${tpsColor(tps)}`}>
-            {tps !== null && tps !== undefined ? tps.toFixed(1) : '—'}
+            {tps.toFixed(1)}
           </span>
         </div>
       )}

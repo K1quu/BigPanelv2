@@ -60,12 +60,19 @@ async function pingServer(host, port) {
 }
 
 async function getTPS(serverId) {
-  try {
-    const resp = await rcon.send(serverId, 'tps');
-    return parseTPS(resp);
-  } catch {
-    return null;
+  // Try a few common commands — first non-empty parsed result wins.
+  // Override via env TPS_COMMAND if needed.
+  const customCmd = process.env.TPS_COMMAND;
+  const commands = customCmd ? [customCmd] : ['tps', 'spark tps', 'mspt'];
+  for (const cmd of commands) {
+    try {
+      const resp = await rcon.send(serverId, cmd);
+      if (!resp || !resp.trim()) continue;
+      const tps = parseTPS(resp);
+      if (tps !== null && tps > 0 && tps <= 25) return tps;
+    } catch {}
   }
+  return null;
 }
 
 async function getPlayerList(serverId) {
