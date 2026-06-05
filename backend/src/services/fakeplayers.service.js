@@ -101,6 +101,16 @@ function migrate(count) {
 }
 
 /**
+ * Instantly fill to target — used on cold start.
+ */
+function fill(totalTarget, now) {
+  fakePlayers.clear();
+  const { lobby: lt, game: gt } = distribute(totalTarget);
+  for (let i = 0; i < lt; i++) addPlayer('lobby', now);
+  for (let i = 0; i < gt; i++) addPlayer('game', now);
+}
+
+/**
  * Sync fake players to target count. Adjust gradually — no more than ±15 per tick.
  */
 function sync(totalTarget, now) {
@@ -157,4 +167,4 @@ function remove(username) {
   return fakePlayers.delete(username);
 }
 
-module.exports = { sync, getCount, getPlayers, getTotal, remove };
+module.exports = { sync, fill, getCount, getPlayers, getTotal, remove };

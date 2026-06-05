@@ -52,6 +52,16 @@ function rangeForHour(hour) {
   return [r1[0] + (r2[0] - r1[0]) * t, r1[1] + (r2[1] - r1[1]) * t];
 }
 
+// Stateless version — for backfilling history with synthetic values
+function velocityAtTime(ts) {
+  const d = new Date(ts * 1000);
+  const hour = d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
+  const [minVal, maxVal] = rangeForHour(hour);
+  // Deterministic-ish jitter so chart isn't flat
+  const seed = Math.sin(ts * 0.01) * 0.5 + 0.5;
+  return Math.round(minVal + seed * (maxVal - minVal));
+}
+
 function computeVelocityOnline() {
   const now = Date.now();
   const d = new Date();
@@ -229,6 +239,35 @@ function getState() {
   return Object.values(state);
 }
 
+function backfillHistory() {
+  // Find last history timestamp; backfill any gap > 60s with synthetic points every 30s.
+  const last = db.prepare('SELECT MAX(timestamp) AS t FROM online_history').get();
+  const now = Math.floor(Date.now() / 1000);
+  const lastTs = last?.t || (now - 60); // if empty, just go back 1 min
+  const gap = now - lastTs;
+  if (gap < 60) return; // no real gap
+
+  const STEP = 30;
+  const insert = db.prepare(
+    'INSERT INTO online_history(server_id, player_count, tps, timestamp) VALUES(?,?,?,?)'
+  );
+  let added = 0;
+  const tx = db.transaction(() => {
+    for (let ts = lastTs + STEP; ts < now; ts += STEP) {
+      const vel = velocityAtTime(ts);
+      // Lobby: 50-100 range, smooth fluctuation. Game: rest.
+      const lob = 50 + Math.round((Math.sin(ts * 0.013) * 0.5 + 0.5) * 50);
+      const gam = Math.max(0, vel - lob);
+      insert.run('velocity', vel, null, ts);
+      insert.run('lobby',    lob, 20, ts);
+      insert.run('game',     gam, 20, ts);
+      added += 3;
+    }
+  });
+  tx();
+  if (added > 0) console.log(`[stats] Backfilled ${added} synthetic history points (gap: ${gap}s)`);
+}
+
 function startStats() {
   registered.init();
   // Close orphaned sessions from previous run
@@ -238,6 +277,13 @@ function startStats() {
   if (closed.changes > 0) {
     console.log(`[stats] Closed ${closed.changes} orphaned session(s) from previous run`);
   }
+
+  // Backfill the downtime gap with synthetic data so chart stays continuous
+  backfillHistory();
+
+  // Pre-fill fake players to current target so first history snapshot has full values
+  const simTarget = computeVelocityOnline();
+  fake.fill(simTarget, Date.now());
 
   // Run initial fast + slow so TPS appears immediately
   fastTick()
