@@ -2,6 +2,7 @@
 const router = require('express').Router();
 const db = require('../db/database');
 const rcon = require('../services/rcon.service');
+const audit = require('../services/audit.service');
 const { requireAuth, requireRole } = require('../middleware/auth.middleware');
 
 // Send RCON command (admin+)
@@ -22,6 +23,8 @@ router.post('/command', requireAuth, requireRole('admin'), async (req, res) => {
   db.prepare(
     'INSERT INTO console_log(admin_user, server_id, command, response, timestamp) VALUES(?,?,?,?,?)'
   ).run(req.user.username, server_id, command, response || error || '', ts);
+
+  audit.log(req, 'console_command', server_id, { command, error: error || undefined });
 
   if (error) return res.status(502).json({ error: `RCON недоступен: ${error}` });
   res.json({ ok: true, response });

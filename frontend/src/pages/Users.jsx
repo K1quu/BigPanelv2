@@ -10,15 +10,32 @@ const ROLE_COLOR = {
   moderator:  'text-fg-2 bg-bg-3 border-border-2',
 };
 
+const ACTION_LABEL = {
+  login:            { label: 'Вход',                color: 'text-grass-bright bg-grass/10' },
+  logout:           { label: 'Выход',               color: 'text-fg-2 bg-bg-3' },
+  login_failed:    { label: 'Неудачный вход',      color: 'text-status-warn bg-status-warn/10' },
+  password_changed: { label: 'Смена пароля',        color: 'text-status-info bg-status-info/10' },
+  user_created:     { label: 'Создан пользователь', color: 'text-grass-bright bg-grass/10' },
+  user_deleted:     { label: 'Удалён пользователь', color: 'text-status-danger bg-status-danger/10' },
+  server_start:     { label: 'Запуск сервера',      color: 'text-grass-bright bg-grass/10' },
+  server_stop:      { label: 'Остановка сервера',   color: 'text-status-danger bg-status-danger/10' },
+  server_restart:   { label: 'Рестарт сервера',     color: 'text-status-info bg-status-info/10' },
+  console_command:  { label: 'RCON команда',        color: 'text-fg-0 bg-bg-3' },
+  player_kick:      { label: 'Кик игрока',          color: 'text-status-warn bg-status-warn/10' },
+  player_ban:       { label: 'Бан игрока',          color: 'text-status-danger bg-status-danger/10' },
+};
+
 export default function Users() {
   const { user } = useAuth();
   const [users, setUsers]     = useState([]);
   const [logs, setLogs]       = useState([]);
+  const [audit, setAudit]     = useState([]);
   const [tab, setTab]         = useState('users');
   const [showForm, setShowForm] = useState(false);
   const [form, setForm]       = useState({ username: '', password: '', role: 'moderator' });
   const [error, setError]     = useState('');
   const [loading, setLoading] = useState(false);
+  const [auditFilter, setAuditFilter] = useState('');
 
   if (user?.role !== 'superadmin') {
     return (
@@ -41,10 +58,19 @@ export default function Users() {
     setLogs(r.data);
   }
 
+  async function loadAudit() {
+    const q = auditFilter ? `?action=${encodeURIComponent(auditFilter)}` : '';
+    const r = await api.get(`/audit${q}`);
+    setAudit(r.data);
+  }
+
   useEffect(() => {
     loadUsers();
     loadLogs();
+    loadAudit();
   }, []);
+
+  useEffect(() => { if (tab === 'audit') loadAudit(); }, [auditFilter, tab]);
 
   async function createUser(e) {
     e.preventDefault();
@@ -81,7 +107,7 @@ export default function Users() {
 
       {/* Tabs */}
       <div className="flex gap-1 mb-5">
-        {[['users','Пользователи'],['logs','Лог команд']].map(([k,l]) => (
+        {[['users','Пользователи'],['audit','Аудит'],['logs','RCON команды']].map(([k,l]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`px-4 py-2 text-sm rounded-md transition-colors
               ${tab===k ? 'bg-bg-3 text-fg-0 border border-border-2' : 'text-fg-2 hover:text-fg-0 border border-transparent hover:bg-bg-hover'}`}>
@@ -173,6 +199,66 @@ export default function Users() {
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {tab === 'audit' && (
+        <>
+          <div className="flex flex-wrap gap-1 mb-4">
+            <button onClick={() => setAuditFilter('')}
+              className={`px-3 py-1.5 text-[11px] rounded transition-colors ${!auditFilter ? 'bg-bg-3 text-fg-0 border border-border-2' : 'text-fg-2 hover:text-fg-0 border border-transparent hover:bg-bg-hover'}`}>
+              Все
+            </button>
+            {Object.entries(ACTION_LABEL).map(([k, v]) => (
+              <button key={k} onClick={() => setAuditFilter(k)}
+                className={`px-3 py-1.5 text-[11px] rounded transition-colors ${auditFilter === k ? 'bg-bg-3 text-fg-0 border border-border-2' : 'text-fg-2 hover:text-fg-0 border border-transparent hover:bg-bg-hover'}`}>
+                {v.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="bg-bg-1 border border-border-1 rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border-1 text-[10px] uppercase text-fg-3 tracking-wider">
+                  <th className="text-left py-3 px-5 font-medium">Время</th>
+                  <th className="text-left py-3 px-5 font-medium">Пользователь</th>
+                  <th className="text-left py-3 px-5 font-medium">Действие</th>
+                  <th className="text-left py-3 px-5 font-medium">Цель</th>
+                  <th className="text-left py-3 px-5 font-medium">Детали</th>
+                  <th className="text-left py-3 px-5 font-medium">IP</th>
+                </tr>
+              </thead>
+              <tbody>
+                {audit.length === 0 && (
+                  <tr><td colSpan={6} className="py-10 text-center text-fg-3">Нет записей</td></tr>
+                )}
+                {audit.map(a => {
+                  const meta = ACTION_LABEL[a.action] || { label: a.action, color: 'text-fg-2 bg-bg-3' };
+                  let details = null;
+                  try { details = a.details ? JSON.parse(a.details) : null; } catch {}
+                  return (
+                    <tr key={a.id} className="border-b border-border-1 last:border-0 hover:bg-bg-hover transition-colors">
+                      <td className="py-3 px-5 text-fg-3 font-mono text-xs num whitespace-nowrap">{fmtDate(a.timestamp)}</td>
+                      <td className="py-3 px-5 text-fg-1 text-xs font-medium">{a.username || '—'}</td>
+                      <td className="py-3 px-5">
+                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded ${meta.color}`}>
+                          {meta.label}
+                        </span>
+                      </td>
+                      <td className="py-3 px-5 text-fg-2 text-xs font-mono">{a.target || '—'}</td>
+                      <td className="py-3 px-5 text-fg-3 text-[11px] font-mono max-w-[280px] truncate" title={a.details}>
+                        {details
+                          ? Object.entries(details).map(([k,v]) => `${k}: ${typeof v === 'string' ? v : JSON.stringify(v)}`).join(', ')
+                          : '—'}
+                      </td>
+                      <td className="py-3 px-5 text-fg-3 font-mono text-[11px]">{a.ip || '—'}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

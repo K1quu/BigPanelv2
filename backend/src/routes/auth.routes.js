@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const db = require('../db/database');
+const audit = require('../services/audit.service');
 const { requireAuth } = require('../middleware/auth.middleware');
 
 const COOKIE_OPTS = {
@@ -21,10 +22,16 @@ router.post('/login', async (req, res) => {
   if (!username || !password) return res.status(400).json({ error: 'Введите логин и пароль' });
 
   const user = db.prepare('SELECT * FROM users WHERE username=?').get(String(username).trim());
-  if (!user) return res.status(401).json({ error: 'Неверный логин или пароль' });
+  if (!user) {
+    audit.log(req, 'login_failed', null, { username, reason: 'no_user' });
+    return res.status(401).json({ error: 'Неверный логин или пароль' });
+  }
 
   const ok = await bcrypt.compare(password, user.password);
-  if (!ok) return res.status(401).json({ error: 'Неверный логин или пароль' });
+  if (!ok) {
+    audit.log({ ...req, user: { username: user.username } }, 'login_failed', String(user.id), { reason: 'bad_password' });
+    return res.status(401).json({ error: 'Неверный логин или пароль' });
+  }
 
   const sessionId = crypto.randomBytes(16).toString('hex');
   const secret = process.env.JWT_SECRET || 'secret';
@@ -36,6 +43,7 @@ router.post('/login', async (req, res) => {
   ).run(sessionId, user.id, hashToken(token), expiresAt);
 
   res.cookie('token', token, COOKIE_OPTS);
+  audit.log({ ...req, user: { username: user.username } }, 'login', String(user.id), { role: user.role });
   res.json({ ok: true, user: { id: user.id, username: user.username, role: user.role } });
 });
 
@@ -44,6 +52,7 @@ router.post('/logout', requireAuth, (req, res) => {
   if (payload && payload.sid) {
     db.prepare('UPDATE sessions SET revoked=1 WHERE id=?').run(payload.sid);
   }
+  audit.log(req, 'logout', String(req.user.id));
   res.clearCookie('token');
   res.json({ ok: true });
 });

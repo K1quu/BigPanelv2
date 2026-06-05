@@ -2,6 +2,7 @@
 const router = require('express').Router();
 const db = require('../db/database');
 const rcon = require('../services/rcon.service');
+const audit = require('../services/audit.service');
 const { requireAuth, requireRole } = require('../middleware/auth.middleware');
 
 // Current online players — deduplicated, latest open session per player
@@ -46,8 +47,10 @@ router.post('/kick', requireAuth, requireRole('admin'), async (req, res) => {
 
   try {
     const resp = await rcon.send(server_id, `kick ${username} ${reason}`);
+    audit.log(req, 'player_kick', username, { server: server_id, reason });
     res.json({ ok: true, response: resp });
   } catch (err) {
+    audit.log(req, 'player_kick', username, { server: server_id, error: err.message });
     res.status(502).json({ error: `RCON недоступен: ${err.message}` });
   }
 });
@@ -60,8 +63,10 @@ router.post('/ban', requireAuth, requireRole('admin'), async (req, res) => {
 
   try {
     const resp = await rcon.send(server_id, `ban ${username} ${reason}`);
+    audit.log(req, 'player_ban', username, { server: server_id, reason });
     res.json({ ok: true, response: resp });
   } catch (err) {
+    audit.log(req, 'player_ban', username, { server: server_id, error: err.message });
     res.status(502).json({ error: `RCON недоступен: ${err.message}` });
   }
 });

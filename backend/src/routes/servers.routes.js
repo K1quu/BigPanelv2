@@ -4,6 +4,7 @@ const { requireAuth, requireRole } = require('../middleware/auth.middleware');
 const { getState } = require('../services/stats.service');
 const docker = require('../services/docker.service');
 const db = require('../db/database');
+const audit = require('../services/audit.service');
 
 router.get('/', requireAuth, (req, res) => {
   res.json(getState());
@@ -23,12 +24,10 @@ async function runAction(action, req, res) {
   }
   try {
     const out = await docker[action](id);
-    const ts = Math.floor(Date.now() / 1000);
-    db.prepare(
-      'INSERT INTO console_log(admin_user, server_id, command, response, timestamp) VALUES(?,?,?,?,?)'
-    ).run(req.user.username, id, `[docker] ${action}`, out || 'ok', ts);
+    audit.log(req, `server_${action}`, id, { result: 'ok' });
     res.json({ ok: true, message: out || 'Готово' });
   } catch (err) {
+    audit.log(req, `server_${action}`, id, { result: 'error', error: err.message });
     res.status(500).json({ error: err.message });
   }
 }
