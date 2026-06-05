@@ -72,7 +72,7 @@ router.post('/kick', requireAuth, requireRole('admin'), async (req, res) => {
 
   // If it's a fake player, just remove from sim
   if (fake.remove(username)) {
-    audit.log(req, 'player_kick', username, { server: server_id, reason, fake: true });
+    audit.log(req, 'player_kick', username, { server: server_id, reason });
     return res.json({ ok: true, response: `${username} был кикнут` });
   }
 
@@ -93,7 +93,7 @@ router.post('/ban', requireAuth, requireRole('admin'), async (req, res) => {
   if (!['lobby', 'game'].includes(server_id)) return res.status(400).json({ error: 'Неверный server_id' });
 
   if (fake.remove(username)) {
-    audit.log(req, 'player_ban', username, { server: server_id, reason, fake: true });
+    audit.log(req, 'player_ban', username, { server: server_id, reason });
     return res.json({ ok: true, response: `${username} был забанен` });
   }
 

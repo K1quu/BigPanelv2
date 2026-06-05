@@ -143,7 +143,7 @@ function getPlayers({ search = '', server = null, limit = 200, offset = 0 } = {}
   for (const [username, p] of fakePlayers) {
     if (server && p.server_id !== server) continue;
     if (needle && !username.toLowerCase().includes(needle)) continue;
-    out.push({ username, server_id: p.server_id, joined_at: p.joined_at, fake: true });
+    out.push({ username, server_id: p.server_id, joined_at: p.joined_at });
   }
   out.sort((a, b) => b.joined_at - a.joined_at);
   return out.slice(offset, offset + limit);

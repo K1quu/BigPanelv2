@@ -74,6 +74,19 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_console_log_ts          ON console_log(timestamp);
 `);
 
+// Sanitize old audit rows: strip "fake":true marker
+try {
+  const r = db.prepare(`
+    UPDATE audit_log
+    SET details = REPLACE(REPLACE(REPLACE(details,
+      ',"fake":true',''),
+      '"fake":true,',''),
+      '"fake":true','')
+    WHERE details LIKE '%"fake":true%'
+  `).run();
+  if (r.changes > 0) console.log(`[DB] Cleaned 'fake:true' from ${r.changes} audit row(s)`);
+} catch {}
+
 // Seed default superadmin if users table is empty
 const hasUsers = db.prepare('SELECT 1 FROM users LIMIT 1').get();
 if (!hasUsers) {
