@@ -124,6 +124,13 @@ export default function Login() {
           </div>
         </div>
       </div>
+
+      {/* Copyright footer */}
+      <div className="absolute bottom-4 left-0 right-0 text-center text-[10px] text-fg-4 select-none cursor-default leading-relaxed pointer-events-none"
+           title="© ООО «Биг Девелопмент». Все права защищены. Несанкционированное копирование, распространение или модификация запрещены.">
+        <div className="opacity-60">© ООО «Биг Девелопмент» · Все права защищены</div>
+        <div className="opacity-40 mt-0.5">Несанкционированное распространение запрещено</div>
+      </div>
     </div>
   );
 }

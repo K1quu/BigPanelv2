@@ -76,6 +76,14 @@ export default function Sidebar() {
             <LogOut size={14} />
           </button>
         </div>
+
+        {/* Copyright footer */}
+        <div className="px-3 pt-3 mt-2 border-t border-border-1 text-[9px] leading-relaxed text-fg-4 select-none cursor-default"
+             title="© ООО «Биг Девелопмент». Все права защищены. Несанкционированное копирование, распространение или модификация запрещены.">
+          <div className="font-medium text-fg-3/70">© ООО «Биг Девелопмент»</div>
+          <div className="opacity-60 mt-0.5">Все права защищены</div>
+          <div className="opacity-50 mt-0.5">Распространение запрещено</div>
+        </div>
       </div>
     </aside>
   );
