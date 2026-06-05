@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Users, Server, Activity, Wifi } from 'lucide-react';
+import { Users, Server, Activity, Wifi, Trash2 } from 'lucide-react';
+import { useAuth } from '../App';
 import api from '../services/api';
 import { connectWS, disconnectWS, onMessage } from '../services/websocket';
 import ServerCard from '../components/ServerCard';
@@ -21,11 +22,25 @@ function KPI({ label, value, unit, Icon, color = 'text-grass-bright' }) {
   );
 }
 
+const ROLE_RANK = { moderator: 1, admin: 2, superadmin: 3 };
+
 export default function Dashboard() {
+  const { user } = useAuth();
+  const canClear = (ROLE_RANK[user?.role] || 0) >= ROLE_RANK.admin;
   const [servers, setServers]   = useState([]);
   const [history, setHistory]   = useState([]);
   const [players, setPlayers]   = useState([]);
   const [range, setRange]       = useState('24h');
+
+  async function clearHistory() {
+    if (!confirm('Очистить всю историю графика? Действие необратимо.')) return;
+    try {
+      await api.delete('/stats/history');
+      setHistory([]);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Ошибка');
+    }
+  }
 
   async function loadAll() {
     const [srv, hist, ply] = await Promise.all([
@@ -90,17 +105,29 @@ export default function Dashboard() {
             </div>
             <div className="text-fg-3 text-xs mt-0.5">История подключений по серверам</div>
           </div>
-          <div className="flex gap-1">
-            {['1h','6h','24h','7d'].map(r => (
+          <div className="flex items-center gap-3">
+            <div className="flex gap-1">
+              {['1h','6h','24h','7d'].map(r => (
+                <button
+                  key={r}
+                  onClick={() => setRange(r)}
+                  className={`px-2.5 py-1 text-[11px] font-mono rounded transition-colors
+                    ${range === r ? 'bg-bg-3 text-fg-0 border border-border-2' : 'text-fg-3 hover:text-fg-1 border border-transparent'}`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+            {canClear && (
               <button
-                key={r}
-                onClick={() => setRange(r)}
-                className={`px-2.5 py-1 text-[11px] font-mono rounded transition-colors
-                  ${range === r ? 'bg-bg-3 text-fg-0 border border-border-2' : 'text-fg-3 hover:text-fg-1 border border-transparent'}`}
+                onClick={clearHistory}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] rounded border border-border-2 text-fg-3 hover:text-status-danger hover:border-status-danger/40 transition-colors"
+                title="Очистить историю графика"
               >
-                {r}
+                <Trash2 size={11} />
+                Очистить
               </button>
-            ))}
+            )}
           </div>
         </div>
         <OnlineChart data={history} />

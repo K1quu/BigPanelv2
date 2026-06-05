@@ -1,7 +1,8 @@
 'use strict';
 const router = require('express').Router();
 const db = require('../db/database');
-const { requireAuth } = require('../middleware/auth.middleware');
+const audit = require('../services/audit.service');
+const { requireAuth, requireRole } = require('../middleware/auth.middleware');
 const { getState } = require('../services/stats.service');
 
 // Current online snapshot
@@ -30,6 +31,13 @@ router.get('/history', requireAuth, (req, res) => {
   `).all(...args);
 
   res.json(rows);
+});
+
+// Clear all online history (admin+)
+router.delete('/history', requireAuth, requireRole('admin'), (req, res) => {
+  const r = db.prepare('DELETE FROM online_history').run();
+  audit.log(req, 'history_cleared', null, { rows: r.changes });
+  res.json({ ok: true, deleted: r.changes });
 });
 
 module.exports = router;
