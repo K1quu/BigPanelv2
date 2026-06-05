@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect } from 'react';
+import { useState, useRef, useMemo, useEffect, useLayoutEffect } from 'react';
 
 /* ── Catmull-Rom → cubic bezier smooth path ── */
 function smoothPath(pts, tension = 0.5) {
@@ -46,10 +46,22 @@ const SERIES = {
 };
 
 export default function OnlineChart({ data = [], servers = ['velocity', 'lobby', 'game'] }) {
-  const W = 900, H = 280;
+  const wrapRef = useRef(null);
+  const [W, setW] = useState(900);
+  const H = 280;
   const PL = 48, PR = 16, PT = 16, PB = 32;
   const innerW = W - PL - PR;
   const innerH = H - PT - PB;
+
+  useLayoutEffect(() => {
+    if (!wrapRef.current) return;
+    const ro = new ResizeObserver(entries => {
+      const cw = entries[0].contentRect.width;
+      if (cw > 100) setW(Math.round(cw));
+    });
+    ro.observe(wrapRef.current);
+    return () => ro.disconnect();
+  }, []);
 
   const svgRef = useRef(null);
   const [hover, setHover] = useState(null);
@@ -158,12 +170,13 @@ export default function OnlineChart({ data = [], servers = ['velocity', 'lobby',
       </div>
 
       {/* SVG chart */}
-      <div className="relative w-full" style={{ height: H }}>
+      <div ref={wrapRef} className="relative w-full" style={{ height: H }}>
         <svg
           ref={svgRef}
+          width={W}
+          height={H}
           viewBox={`0 0 ${W} ${H}`}
-          preserveAspectRatio="none"
-          className="w-full h-full block"
+          className="block"
           onMouseMove={onMove}
           onMouseLeave={() => setHover(null)}
         >

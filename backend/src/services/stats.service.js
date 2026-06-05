@@ -1,7 +1,7 @@
 'use strict';
-const cron = require('node-cron');
 const db = require('../db/database');
 const mc = require('./minecraft.service');
+const rcon = require('./rcon.service');
 const events = require('../events');
 
 // In-memory server state (read by API endpoints without DB hit)
@@ -12,48 +12,59 @@ const state = {
 };
 
 // Track online players per server for session detection
-// { serverId: Set<username> }
 const onlinePlayers = { lobby: new Set(), game: new Set() };
 
-async function tick() {
+/**
+ * Fast tick — every 5 seconds. Ping only + RCON player list.
+ * Broadcasts to WebSocket clients for near-realtime UI.
+ */
+async function fastTick() {
   const now = Date.now();
 
-  // --- Ping all 3 servers ---
   const [velPing, lobPing, gamePing] = await Promise.all([
-    mc.pingServer(process.env.VELOCITY_HOST || '127.0.0.1', process.env.VELOCITY_PORT || 25565),
-    mc.pingServer(process.env.LOBBY_HOST   || '127.0.0.1', process.env.LOBBY_PORT   || 25566),
-    mc.pingServer(process.env.GAME_HOST    || '127.0.0.1', process.env.GAME_PORT    || 25567),
+    mc.pingServer(process.env.VELOCITY_HOST || '127.0.0.1', process.env.VELOCITY_PORT || 25577),
+    mc.pingServer(process.env.LOBBY_HOST    || '127.0.0.1', process.env.LOBBY_PORT    || 25541),
+    mc.pingServer(process.env.GAME_HOST     || '127.0.0.1', process.env.GAME_PORT     || 25591),
   ]);
 
-  // Keep last known player count if server temporarily unreachable
+  // Merge — preserve last known data if ping fails
   const merge = (cur, ping) => ({
     ...cur, ...ping, updatedAt: now,
     players: ping.online ? ping.players : cur.players,
+    version: ping.online ? ping.version : cur.version,
+    maxPlayers: ping.online ? ping.maxPlayers : cur.maxPlayers,
+    motd: ping.online ? ping.motd : cur.motd,
   });
   Object.assign(state.velocity, merge(state.velocity, velPing));
   Object.assign(state.lobby,    merge(state.lobby,    lobPing));
   Object.assign(state.game,     merge(state.game,     gamePing));
 
-  // --- TPS + player list via RCON (only if server is online) ---
-  if (lobPing.online) {
-    const [tps, players] = await Promise.all([mc.getTPS('lobby'), mc.getPlayerList('lobby')]);
-    state.lobby.tps = tps;
-    updateSessions('lobby', players, now);
-    state.lobby.players = players.length > 0 ? players.length : lobPing.players;
-  } else {
-    clearSessions('lobby', now);
+  // --- Player list: prefer RCON, fallback to SLP sample, fallback to last set ---
+  await collectPlayers('lobby', lobPing, now);
+  await collectPlayers('game',  gamePing, now);
+
+  // If RCON gave us players, use that count; else use SLP ping count
+  if (onlinePlayers.lobby.size > 0) state.lobby.players = onlinePlayers.lobby.size;
+  if (onlinePlayers.game.size  > 0) state.game.players  = onlinePlayers.game.size;
+
+  events.emit('tick', { servers: Object.values(state) });
+}
+
+/**
+ * Slow tick — every 30 seconds. Also fetches TPS and writes history snapshot.
+ */
+async function slowTick() {
+  const now = Date.now();
+
+  // TPS via RCON
+  if (state.lobby.online && rcon.isConnected('lobby')) {
+    state.lobby.tps = await mc.getTPS('lobby');
+  }
+  if (state.game.online && rcon.isConnected('game')) {
+    state.game.tps = await mc.getTPS('game');
   }
 
-  if (gamePing.online) {
-    const [tps, players] = await Promise.all([mc.getTPS('game'), mc.getPlayerList('game')]);
-    state.game.tps = tps;
-    updateSessions('game', players, now);
-    state.game.players = players.length > 0 ? players.length : gamePing.players;
-  } else {
-    clearSessions('game', now);
-  }
-
-  // --- Persist snapshots ---
+  // Persist history snapshot
   const insert = db.prepare(
     'INSERT INTO online_history(server_id, player_count, tps, timestamp) VALUES(?,?,?,?)'
   );
@@ -61,12 +72,29 @@ async function tick() {
   for (const s of Object.values(state)) {
     insert.run(s.id, s.players, s.tps, ts);
   }
+}
 
-  // --- Broadcast ---
-  events.emit('tick', {
-    servers: Object.values(state),
-    totalOnline: state.velocity.players,
-  });
+async function collectPlayers(serverId, ping, now) {
+  if (!ping.online) {
+    clearSessions(serverId, now);
+    return;
+  }
+
+  let list = [];
+  // 1. Try RCON list (most reliable, gives full names)
+  if (rcon.isConnected(serverId)) {
+    list = await mc.getPlayerList(serverId);
+  }
+  // 2. Fallback to SLP sample (limited to ~12 names, but better than nothing)
+  if (list.length === 0 && ping.sample && ping.sample.length > 0) {
+    list = ping.sample;
+  }
+  // 3. If still empty but ping shows online players, we can't list them — keep prev set
+  if (list.length === 0 && ping.players > 0) {
+    return; // don't clear, just skip session tracking this tick
+  }
+
+  updateSessions(serverId, list, now);
 }
 
 function updateSessions(serverId, currentList, now) {
@@ -74,7 +102,6 @@ function updateSessions(serverId, currentList, now) {
   const curr = new Set(currentList);
   const ts = Math.floor(now / 1000);
 
-  // Joined — only insert if no open session already exists
   for (const name of curr) {
     if (!prev.has(name)) {
       const open = db.prepare(
@@ -89,7 +116,6 @@ function updateSessions(serverId, currentList, now) {
     }
   }
 
-  // Left
   for (const name of prev) {
     if (!curr.has(name)) {
       db.prepare(
@@ -120,7 +146,7 @@ function getState() {
 }
 
 function startStats() {
-  // Close any orphaned open sessions from previous run
+  // Close orphaned sessions from previous run
   const closed = db.prepare(
     'UPDATE player_sessions SET left_at=? WHERE left_at IS NULL'
   ).run(Math.floor(Date.now() / 1000));
@@ -128,11 +154,19 @@ function startStats() {
     console.log(`[stats] Closed ${closed.changes} orphaned session(s) from previous run`);
   }
 
-  tick().catch(err => console.error('[stats] initial tick failed:', err.message));
-  cron.schedule('*/30 * * * * *', () => {
-    tick().catch(err => console.error('[stats] tick failed:', err.message));
-  });
-  console.log('[stats] Collecting every 30 seconds');
+  fastTick().catch(err => console.error('[stats] initial tick failed:', err.message));
+
+  // Fast: every 5 seconds for realtime UI
+  setInterval(() => {
+    fastTick().catch(err => console.error('[stats] fast tick failed:', err.message));
+  }, 5000);
+
+  // Slow: every 30 seconds for history + TPS
+  setInterval(() => {
+    slowTick().catch(err => console.error('[stats] slow tick failed:', err.message));
+  }, 30000);
+
+  console.log('[stats] Realtime ticks: 5s · history snapshot: 30s');
 }
 
 module.exports = { startStats, getState };
