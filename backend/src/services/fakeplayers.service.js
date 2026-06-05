@@ -44,10 +44,24 @@ function generateNickname() {
 // Map<nickname, {server_id, joined_at}>
 const fakePlayers = new Map();
 
+// Smoothly drifting lobby target around 50-100, with rare fluctuations
+let lobbyTargetState = 75;
+let nextLobbyShiftAt = 0;
+
 function distribute(targetTotal) {
-  // Heuristic split: lobby ~40%, game ~60% (game = main mode)
-  const lobby = Math.round(targetTotal * 0.4);
-  const game  = targetTotal - lobby;
+  // Lobby: stays in 50-100 range, drifts slowly (changes target every ~60s)
+  const now = Date.now();
+  if (now >= nextLobbyShiftAt) {
+    lobbyTargetState = 50 + Math.round(Math.random() * 50); // 50..100
+    nextLobbyShiftAt = now + (45 + Math.random() * 60) * 1000;
+  }
+
+  // If total too small to support both — give lobby a fair share
+  let lobby = lobbyTargetState;
+  if (targetTotal < 250) lobby = Math.round(targetTotal * 0.25);
+  if (lobby > targetTotal) lobby = targetTotal;
+
+  const game = Math.max(0, targetTotal - lobby);
   return { lobby, game };
 }
 
@@ -97,10 +111,16 @@ function sync(totalTarget, now) {
   const lobbyDelta = lobbyTarget - lobbyHave;
   const gameDelta  = gameTarget  - gameHave;
 
-  // Smooth: limit changes per tick to ±20 each
-  const MAX = 20;
-  const lobbyStep = Math.max(-MAX, Math.min(MAX, lobbyDelta));
-  const gameStep  = Math.max(-MAX, Math.min(MAX, gameDelta));
+  // Smooth changes — but allow big jumps when far from target (startup catch-up)
+  function stepFor(delta) {
+    const abs = Math.abs(delta);
+    if (abs > 500) return Math.sign(delta) * 200;  // huge gap — fast catch-up
+    if (abs > 100) return Math.sign(delta) * 40;
+    if (abs > 30)  return Math.sign(delta) * 15;
+    return Math.sign(delta) * Math.min(abs, 5);     // near target — gentle drift
+  }
+  const lobbyStep = stepFor(lobbyDelta);
+  const gameStep  = stepFor(gameDelta);
 
   for (let i = 0; i < Math.abs(lobbyStep); i++) {
     if (lobbyStep > 0) addPlayer('lobby', now); else removeOne('lobby');
