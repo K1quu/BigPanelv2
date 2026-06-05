@@ -4,6 +4,12 @@ const db = require('../db/database');
 const audit = require('../services/audit.service');
 const { requireAuth, requireRole } = require('../middleware/auth.middleware');
 const { getState } = require('../services/stats.service');
+const registered = require('../services/registered.service');
+
+// Total registered players (simulated growing counter)
+router.get('/registered', requireAuth, (req, res) => {
+  res.json({ total: registered.get() });
+});
 
 // Current online snapshot
 router.get('/online', requireAuth, (req, res) => {

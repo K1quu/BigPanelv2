@@ -68,6 +68,11 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log(action);
   CREATE INDEX IF NOT EXISTS idx_audit_user   ON audit_log(username);
 
+  CREATE TABLE IF NOT EXISTS meta (
+    key   TEXT PRIMARY KEY,
+    value TEXT
+  );
+
   CREATE INDEX IF NOT EXISTS idx_online_history_server_ts ON online_history(server_id, timestamp);
   CREATE INDEX IF NOT EXISTS idx_player_sessions_username ON player_sessions(username);
   CREATE INDEX IF NOT EXISTS idx_player_sessions_joined  ON player_sessions(joined_at);

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Users, Server, Activity, Wifi, Trash2 } from 'lucide-react';
+import { Users, Server, Activity, Wifi, Trash2, UserCheck } from 'lucide-react';
 import { useAuth } from '../App';
 import api from '../services/api';
 import { connectWS, disconnectWS, onMessage } from '../services/websocket';
@@ -31,6 +31,7 @@ export default function Dashboard() {
   const [history, setHistory]   = useState([]);
   const [players, setPlayers]   = useState([]);
   const [playersTotal, setPlayersTotal] = useState(0);
+  const [registered, setRegistered] = useState(0);
   const [range, setRange]       = useState('24h');
 
   async function clearHistory() {
@@ -53,6 +54,7 @@ export default function Dashboard() {
     setHistory(hist.data);
     setPlayers(ply.data.players || ply.data);
     setPlayersTotal(ply.data.total ?? (ply.data.length || 0));
+    api.get('/stats/registered').then(r => setRegistered(r.data.total)).catch(() => {});
   }
 
   useEffect(() => { loadAll(); }, [range]);
@@ -74,6 +76,7 @@ export default function Dashboard() {
           setPlayers(r.data.players || r.data);
           setPlayersTotal(r.data.total ?? (r.data.length || 0));
         }).catch(() => {});
+        if (typeof msg.registered === 'number') setRegistered(msg.registered);
       }
     });
     return () => { off(); disconnectWS(); };
@@ -98,7 +101,7 @@ export default function Dashboard() {
         <KPI label="Всего онлайн"  value={totalOnline} Icon={Users}    color="text-grass-bright" />
         <KPI label="Серверов онлайн" value={`${onlineCount}/3`} Icon={Server} color="text-status-info" />
         <KPI label="Средний TPS" value={avgTPS ? avgTPS.toFixed(1) : '—'} Icon={Activity} color={avgTPS >= 18 ? 'text-grass-bright' : 'text-status-warn'} />
-        <KPI label="Игроков сейчас" value={playersTotal.toLocaleString('ru-RU')} Icon={Wifi} color="text-fg-0" />
+        <KPI label="Игроков в базе" value={registered.toLocaleString('ru-RU')} Icon={UserCheck} color="text-fg-0" />
       </div>
 
       {/* Graph */}

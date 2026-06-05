@@ -3,6 +3,7 @@ const db = require('../db/database');
 const mc = require('./minecraft.service');
 const rcon = require('./rcon.service');
 const fake = require('./fakeplayers.service');
+const registered = require('./registered.service');
 const events = require('../events');
 
 // In-memory server state (read by API endpoints without DB hit)
@@ -129,7 +130,8 @@ async function fastTick() {
   state.velocity.maxPlayers = 15000;
   if (anyBackendOnline) state.velocity.online = true;
 
-  events.emit('tick', { servers: Object.values(state) });
+  registered.tick();
+  events.emit('tick', { servers: Object.values(state), registered: registered.get() });
 }
 
 /**
@@ -228,6 +230,7 @@ function getState() {
 }
 
 function startStats() {
+  registered.init();
   // Close orphaned sessions from previous run
   const closed = db.prepare(
     'UPDATE player_sessions SET left_at=? WHERE left_at IS NULL'
