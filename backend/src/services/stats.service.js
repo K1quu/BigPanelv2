@@ -47,6 +47,15 @@ async function fastTick() {
   if (onlinePlayers.lobby.size > 0) state.lobby.players = onlinePlayers.lobby.size;
   if (onlinePlayers.game.size  > 0) state.game.players  = onlinePlayers.game.size;
 
+  // Velocity proxy total = sum of backend players (more reliable than Velocity SLP)
+  // Treat Velocity as online if at least one backend is online.
+  const backendTotal = state.lobby.players + state.game.players;
+  const anyBackendOnline = state.lobby.online || state.game.online;
+  state.velocity.players = Math.max(velPing.players || 0, backendTotal);
+  if (!state.velocity.online && anyBackendOnline) {
+    state.velocity.online = true;
+  }
+
   events.emit('tick', { servers: Object.values(state) });
 }
 
