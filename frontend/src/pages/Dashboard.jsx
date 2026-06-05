@@ -30,6 +30,7 @@ export default function Dashboard() {
   const [servers, setServers]   = useState([]);
   const [history, setHistory]   = useState([]);
   const [players, setPlayers]   = useState([]);
+  const [playersTotal, setPlayersTotal] = useState(0);
   const [range, setRange]       = useState('24h');
 
   async function clearHistory() {
@@ -51,6 +52,7 @@ export default function Dashboard() {
     setServers(srv.data);
     setHistory(hist.data);
     setPlayers(ply.data.players || ply.data);
+    setPlayersTotal(ply.data.total ?? (ply.data.length || 0));
   }
 
   useEffect(() => { loadAll(); }, [range]);
@@ -62,7 +64,16 @@ export default function Dashboard() {
         setServers(msg.servers);
       }
       if (msg.type === 'player_join' || msg.type === 'player_leave') {
-        api.get('/players?limit=50').then(r => setPlayers(r.data.players || r.data)).catch(() => {});
+        api.get('/players?limit=50').then(r => {
+          setPlayers(r.data.players || r.data);
+          setPlayersTotal(r.data.total ?? (r.data.length || 0));
+        }).catch(() => {});
+      }
+      if (msg.type === 'tick') {
+        api.get('/players?limit=50').then(r => {
+          setPlayers(r.data.players || r.data);
+          setPlayersTotal(r.data.total ?? (r.data.length || 0));
+        }).catch(() => {});
       }
     });
     return () => { off(); disconnectWS(); };
@@ -87,7 +98,7 @@ export default function Dashboard() {
         <KPI label="Всего онлайн"  value={totalOnline} Icon={Users}    color="text-grass-bright" />
         <KPI label="Серверов онлайн" value={`${onlineCount}/3`} Icon={Server} color="text-status-info" />
         <KPI label="Средний TPS" value={avgTPS ? avgTPS.toFixed(1) : '—'} Icon={Activity} color={avgTPS >= 18 ? 'text-grass-bright' : 'text-status-warn'} />
-        <KPI label="Игроков в базе" value={players.length} Icon={Wifi} color="text-fg-0" />
+        <KPI label="Игроков сейчас" value={playersTotal.toLocaleString('ru-RU')} Icon={Wifi} color="text-fg-0" />
       </div>
 
       {/* Graph */}
@@ -156,7 +167,9 @@ export default function Dashboard() {
         <div className="bg-bg-1 border border-border-1 rounded-lg overflow-hidden">
           <div className="px-5 py-4 border-b border-border-1">
             <div className="text-fg-0 font-semibold text-sm">Онлайн сейчас</div>
-            <div className="text-fg-3 text-xs mt-0.5">{players.length} игроков</div>
+            <div className="text-fg-3 text-xs mt-0.5">
+              {playersTotal.toLocaleString('ru-RU')} игроков{playersTotal > players.length ? ` · показано ${players.length}` : ''}
+            </div>
           </div>
           <div className="overflow-auto max-h-[420px]">
             <PlayerTable players={players} mode="online" onAction={loadAll} />
