@@ -1,4 +1,9 @@
-import { Wifi, WifiOff, Zap } from 'lucide-react';
+import { useState } from 'react';
+import { Wifi, WifiOff, Zap, RotateCw, Power, Play } from 'lucide-react';
+import api from '../services/api';
+import { useAuth } from '../App';
+
+const ROLE_RANK = { moderator: 1, admin: 2, superadmin: 3 };
 
 function tpsColor(tps) {
   if (tps === null || tps === undefined) return 'text-fg-3';
@@ -7,9 +12,26 @@ function tpsColor(tps) {
   return 'text-status-danger';
 }
 
-export default function ServerCard({ server }) {
-  const { name, type, online, players, maxPlayers, version, tps, motd } = server;
+export default function ServerCard({ server, onAction }) {
+  const { user } = useAuth();
+  const { id, name, type, online, players, maxPlayers, version, tps, motd } = server;
   const fill = maxPlayers ? Math.round((players / maxPlayers) * 100) : 0;
+  const canControl = (ROLE_RANK[user?.role] || 0) >= ROLE_RANK.admin && type !== 'proxy';
+  const [busy, setBusy] = useState(null);
+
+  async function act(action) {
+    if (busy) return;
+    if (action === 'stop' && !confirm(`Выключить сервер ${name}?`)) return;
+    setBusy(action);
+    try {
+      await api.post(`/servers/${id}/${action}`);
+      onAction?.();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Ошибка');
+    } finally {
+      setTimeout(() => setBusy(null), 1500);
+    }
+  }
 
   return (
     <div className="bg-bg-1 border border-border-1 rounded-lg p-5 hover:border-border-2 transition-colors">
@@ -45,15 +67,53 @@ export default function ServerCard({ server }) {
         />
       </div>
 
-      {type !== 'proxy' && tps !== null && tps !== undefined && (
-        <div className="flex items-center gap-1.5">
-          <Zap size={12} className={tpsColor(tps)} />
-          <span className="text-fg-2 text-xs">TPS:</span>
-          <span className={`text-xs font-semibold num ${tpsColor(tps)}`}>
-            {tps.toFixed(1)}
-          </span>
-        </div>
-      )}
+      <div className="flex items-center justify-between">
+        {type !== 'proxy' && tps !== null && tps !== undefined ? (
+          <div className="flex items-center gap-1.5">
+            <Zap size={12} className={tpsColor(tps)} />
+            <span className="text-fg-2 text-xs">TPS:</span>
+            <span className={`text-xs font-semibold num ${tpsColor(tps)}`}>{tps.toFixed(1)}</span>
+          </div>
+        ) : <div />}
+
+        {canControl && (
+          <div className="flex items-center gap-1.5">
+            {online ? (
+              <>
+                <button
+                  onClick={() => act('restart')}
+                  disabled={!!busy}
+                  className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded bg-bg-2 border border-border-2 text-fg-1 hover:text-status-info hover:border-status-info/40 disabled:opacity-50 transition-colors"
+                  title="Перезапустить"
+                >
+                  <RotateCw size={11} className={busy === 'restart' ? 'animate-spin-me' : ''} />
+                  Рестарт
+                </button>
+                <button
+                  onClick={() => act('stop')}
+                  disabled={!!busy}
+                  className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded bg-bg-2 border border-border-2 text-fg-1 hover:text-status-danger hover:border-status-danger/40 disabled:opacity-50 transition-colors"
+                  title="Выключить"
+                >
+                  <Power size={11} />
+                  Стоп
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => act('start')}
+                disabled={!!busy}
+                className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded text-[#0a1a07] disabled:opacity-50 transition-colors"
+                style={{ background: 'linear-gradient(180deg,#6ed55e,#4a9e3f)' }}
+                title="Запустить"
+              >
+                <Play size={11} fill="currentColor" />
+                Запуск
+              </button>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

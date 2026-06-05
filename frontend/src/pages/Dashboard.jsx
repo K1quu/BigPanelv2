@@ -119,7 +119,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 gap-0">
             {servers.map(s => (
               <div key={s.id} className="p-4 border-b border-border-1 last:border-0">
-                <ServerCard server={s} />
+                <ServerCard server={s} onAction={loadAll} />
               </div>
             ))}
           </div>
