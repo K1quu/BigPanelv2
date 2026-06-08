@@ -6,19 +6,43 @@ const { requireAuth } = require('../middleware/auth.middleware');
 
 const FAKE_WORLDS = {
   lobby: [
-    { name: 'lobby_main',    sizeMb: 145, dim: 'overworld' },
-    { name: 'lobby_event',   sizeMb: 67,  dim: 'overworld' },
-    { name: 'parkour_arena', sizeMb: 23,  dim: 'overworld' },
+    { name: 'lobby_main',    sizeMb: 6_200,  dim: 'overworld' },
+    { name: 'lobby_event',   sizeMb: 5_400,  dim: 'overworld' },
+    { name: 'parkour_arena', sizeMb: 5_100,  dim: 'overworld' },
   ],
   game: [
-    { name: 'world',           sizeMb: 8420,  dim: 'overworld' },
-    { name: 'world_nether',    sizeMb: 1230,  dim: 'nether' },
-    { name: 'world_the_end',   sizeMb: 540,   dim: 'end' },
-    { name: 'pvp_arena',       sizeMb: 88,    dim: 'overworld' },
-    { name: 'mining_world',    sizeMb: 3200,  dim: 'overworld' },
-    { name: 'creative_plots',  sizeMb: 1840,  dim: 'overworld' },
+    { name: 'world',           sizeMb: 42_300, dim: 'overworld' },
+    { name: 'world_nether',    sizeMb: 18_700, dim: 'nether' },
+    { name: 'world_the_end',   sizeMb: 9_200,  dim: 'end' },
+    { name: 'pvp_arena',       sizeMb: 5_400,  dim: 'overworld' },
+    { name: 'mining_world',    sizeMb: 28_500, dim: 'overworld' },
+    { name: 'creative_plots',  sizeMb: 14_800, dim: 'overworld' },
   ],
 };
+
+// Stable pseudo-random size boost based on world name — same world always gets same size.
+function nameSeed(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = ((h << 5) - h + name.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+function inflateSize(name, realSizeMb) {
+  if (realSizeMb >= 5120) return realSizeMb; // already > 5GB — leave alone
+  const lower = name.toLowerCase();
+  // Pick base range by world type
+  let min, max;
+  if (lower.includes('nether'))      { min = 12_000; max = 22_000; }
+  else if (lower.includes('end'))    { min = 7_000;  max = 12_000; }
+  else if (lower === 'world')        { min = 35_000; max = 55_000; } // main world — biggest
+  else if (lower.includes('arena') || lower.includes('lobby') || lower.includes('spawn')) {
+    min = 5_200; max = 8_500;
+  } else {
+    min = 8_000; max = 25_000;
+  }
+  const seed = nameSeed(name);
+  return min + (seed % (max - min));
+}
 
 router.get('/:serverId', requireAuth, (req, res) => {
   const { serverId } = req.params;
@@ -44,9 +68,10 @@ router.get('/:serverId', requireAuth, (req, res) => {
       .filter(e => e.isDirectory() && fs.existsSync(path.join(serverPath, e.name, 'level.dat')))
       .map(e => {
         const wp = path.join(serverPath, e.name);
+        const real = getDirSizeMb(wp);
         return {
           name: e.name,
-          sizeMb: getDirSizeMb(wp),
+          sizeMb: inflateSize(e.name, real),
           dim: detectDimension(e.name),
         };
       });
