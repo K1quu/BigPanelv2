@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft, Wifi, WifiOff, Cpu, MemoryStick, Activity,
-  Network, HardDrive, Clock, Signal, Puzzle, ArrowUpRight, ArrowDownLeft
+  Network, HardDrive, Clock, Signal, Puzzle, ArrowUpRight, ArrowDownLeft, Database
 } from 'lucide-react';
 import api from '../services/api';
 import { connectWS, disconnectWS, onMessage } from '../services/websocket';
@@ -224,7 +224,10 @@ export default function ServerDetail() {
             <Puzzle size={14} className="text-grass" />
             Нагрузка по плагинам
           </div>
-          <div className="text-fg-3 text-xs">Top {plugins.length}</div>
+          <div className="flex items-center gap-5 text-fg-3 text-[10px] uppercase tracking-wider">
+            <div className="flex items-center gap-1.5"><Database size={10} className="text-status-info" /> Память</div>
+            <div className="flex items-center gap-1.5"><Cpu size={10} className="text-grass" /> CPU</div>
+          </div>
         </div>
         <div className="divide-y divide-border-1">
           {plugins.map((p, i) => {
@@ -236,9 +239,13 @@ export default function ServerDetail() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-3 mb-1.5">
                     <span className="text-fg-0 text-sm font-medium truncate">{p.name}</span>
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <span className="text-fg-3 text-[11px] font-mono">{fmtSize(p.memMb)}</span>
-                      <span className="text-fg-0 text-sm font-semibold num min-w-[55px] text-right">
+                    <div className="flex items-center gap-4 flex-shrink-0">
+                      <span className="flex items-center gap-1.5 text-fg-3 text-[11px] font-mono" title="Память">
+                        <Database size={10} className="text-status-info" />
+                        {fmtSize(p.memMb)}
+                      </span>
+                      <span className="flex items-center gap-1.5 text-fg-0 text-sm font-semibold num min-w-[70px] justify-end" title="CPU">
+                        <Cpu size={10} className="text-grass" />
                         {p.cpuPercent.toFixed(2)}<span className="text-fg-3 text-xs">%</span>
                       </span>
                     </div>

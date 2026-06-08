@@ -205,7 +205,7 @@ function ServerDetail({ server, onAction }) {
             </div>
 
             <Link to={`/servers/${server.id}`}
-              className="flex items-center justify-center gap-2 w-full h-10 rounded-md bg-bg-2 border border-border-2 text-fg-1 text-sm font-medium hover:bg-bg-3 hover:text-fg-0 hover:border-border-3 transition-colors">
+              className="flex items-center justify-center gap-2 w-full h-10 rounded-md bg-bg-2 border border-border-2 text-fg-1 text-sm font-medium hover:bg-bg-3 hover:text-fg-0 hover:border-border-3 transition-colors mb-6">
               Подробная статистика
               <ChevronRight size={14} />
             </Link>
