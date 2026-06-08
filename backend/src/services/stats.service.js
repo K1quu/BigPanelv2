@@ -4,6 +4,7 @@ const mc = require('./minecraft.service');
 const rcon = require('./rcon.service');
 const fake = require('./fakeplayers.service');
 const registered = require('./registered.service');
+const health = require('./health.service');
 const events = require('../events');
 
 // In-memory server state (read by API endpoints without DB hit)
@@ -163,6 +164,15 @@ async function fastTick() {
   if (anyBackendOnline) state.velocity.online = true;
 
   registered.tick();
+
+  // Refresh server health (spark or simulation)
+  await Promise.all([
+    health.refresh('lobby', { online: state.lobby.online, players: state.lobby.players }),
+    health.refresh('game',  { online: state.game.online,  players: state.game.players  }),
+  ]);
+  state.lobby.health = health.get('lobby');
+  state.game.health  = health.get('game');
+
   events.emit('tick', { servers: Object.values(state), registered: registered.get() });
 }
 

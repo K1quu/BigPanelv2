@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Wifi, WifiOff, RotateCw, Power, Play } from 'lucide-react';
+import { Wifi, WifiOff, RotateCw, Power, Play, Cpu, MemoryStick, Activity, HardDrive } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../App';
 import { connectWS, disconnectWS, onMessage } from '../services/websocket';
@@ -12,6 +12,97 @@ function Metric({ label, value, color = 'text-fg-0' }) {
     <div className="bg-bg-2 rounded-md px-4 py-3">
       <div className="text-fg-3 text-[10px] uppercase tracking-wider mb-1">{label}</div>
       <div className={`text-lg font-bold num ${color}`}>{value ?? '—'}</div>
+    </div>
+  );
+}
+
+function fmtSize(mb) {
+  if (mb === undefined || mb === null) return '—';
+  if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
+  return `${mb} MB`;
+}
+
+function pctColor(p) {
+  if (p < 60) return 'text-grass-bright';
+  if (p < 80) return 'text-status-warn';
+  return 'text-status-danger';
+}
+function barColor(p) {
+  if (p < 60) return 'linear-gradient(90deg, #4a9e3f, #7ee070)';
+  if (p < 80) return 'linear-gradient(90deg, #d49b30, #f5b544)';
+  return 'linear-gradient(90deg, #c94343, #ef6464)';
+}
+
+function HealthBar({ label, Icon, used, total, suffix = '', percentOverride = null }) {
+  const pct = percentOverride !== null
+    ? percentOverride
+    : (total ? Math.min(100, (used / total) * 100) : 0);
+  return (
+    <div className="bg-bg-2 rounded-md px-4 py-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2 text-fg-2 text-xs">
+          <Icon size={12} />
+          {label}
+        </div>
+        <div className={`text-xs font-semibold num ${pctColor(pct)}`}>
+          {pct.toFixed(1)}%
+        </div>
+      </div>
+      <div className="h-1.5 bg-bg-3 rounded-full overflow-hidden mb-1.5">
+        <div className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${pct}%`, background: barColor(pct) }} />
+      </div>
+      <div className="text-fg-3 text-[10px] font-mono">
+        {total
+          ? `${fmtSize(used)} / ${fmtSize(total)}`
+          : suffix}
+      </div>
+    </div>
+  );
+}
+
+function HealthSection({ health }) {
+  if (!health || health.source === 'offline') {
+    return (
+      <div className="bg-bg-2 rounded-md px-4 py-6 text-center text-fg-3 text-xs">
+        Метрики недоступны — сервер выключен
+      </div>
+    );
+  }
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <HealthBar
+        label="CPU (процесс)"
+        Icon={Cpu}
+        used={health.cpuProcess}
+        total={100}
+        percentOverride={health.cpuProcess}
+      />
+      <HealthBar
+        label="JVM Heap"
+        Icon={MemoryStick}
+        used={health.heapUsedMb}
+        total={health.heapTotalMb}
+      />
+      <HealthBar
+        label="RAM (система)"
+        Icon={HardDrive}
+        used={health.ramUsedMb}
+        total={health.ramTotalMb}
+      />
+      <div className="bg-bg-2 rounded-md px-4 py-3">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 text-fg-2 text-xs">
+            <Activity size={12} />
+            MSPT
+          </div>
+        </div>
+        <div className="text-lg font-bold num text-fg-0">
+          {health.msptMedian ? health.msptMedian.toFixed(1) : '—'}
+          <span className="text-fg-3 text-sm font-normal ml-1">ms</span>
+        </div>
+        <div className="text-fg-3 text-[10px] font-mono mt-1">медиана</div>
+      </div>
     </div>
   );
 }
@@ -104,6 +195,20 @@ function ServerDetail({ server, onAction }) {
           )}
           <Metric label="Тип" value={server.type === 'proxy' ? 'Proxy' : 'Paper'} color="text-status-info" />
         </div>
+
+        {server.type !== 'proxy' && (
+          <div className="mb-5">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-fg-2 text-xs font-medium">Состояние сервера</div>
+              {server.health?.source && (
+                <span className="text-fg-3 text-[10px] font-mono">
+                  {server.health.source === 'spark' ? 'spark profiler' : 'мониторинг'}
+                </span>
+              )}
+            </div>
+            <HealthSection health={server.health} />
+          </div>
+        )}
 
         {history.length > 0 && (
           <div>

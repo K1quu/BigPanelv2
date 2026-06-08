@@ -136,4 +136,69 @@ async function getPlugins(serverId) {
   }
 }
 
-module.exports = { pingServer, getTPS, getPlayerList, getPlugins, parsePlugins, parsePlayerList, stripColorCodes };
+async function getSparkHealth(serverId) {
+  try {
+    const resp = await rcon.send(serverId, 'spark health');
+    if (!resp || !resp.trim()) return null;
+    return parseSparkHealth(resp);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Parse `/spark health` output. Returns extracted health metrics.
+ * Spark output varies by version — we look for common patterns.
+ */
+function parseSparkHealth(raw) {
+  const clean = stripColorCodes(raw);
+  const out = {};
+
+  // CPU usage — multiple formats:
+  //   "CPU Usage: 31.7% (system) 21.4% (process)"
+  //   "process: 21.4% (avg)"
+  //   "system: 31.7%"
+  const sysCpu = clean.match(/(\d+(?:\.\d+)?)\s*%[^\n]*system/i)
+              || clean.match(/system\s+cpu[^:]*:\s*(\d+(?:\.\d+)?)\s*%/i);
+  const procCpu = clean.match(/(\d+(?:\.\d+)?)\s*%[^\n]*process/i)
+               || clean.match(/process\s+cpu[^:]*:\s*(\d+(?:\.\d+)?)\s*%/i);
+  if (sysCpu)  out.cpuSystem  = parseFloat(sysCpu[1]);
+  if (procCpu) out.cpuProcess = parseFloat(procCpu[1]);
+
+  // Memory — formats:
+  //   "Memory: 14.2GB / 32.0GB"
+  //   "heap 4.2GB / 8.0GB (52.5%)"
+  //   "Memory used: 4.2 GB"
+  const heap = clean.match(/heap[^\d]*?(\d+(?:\.\d+)?)\s*(GB|MB)\s*\/\s*(\d+(?:\.\d+)?)\s*(GB|MB)/i);
+  if (heap) {
+    const toMb = (v, u) => u.toUpperCase() === 'GB' ? parseFloat(v) * 1024 : parseFloat(v);
+    out.heapUsedMb  = Math.round(toMb(heap[1], heap[2]));
+    out.heapTotalMb = Math.round(toMb(heap[3], heap[4]));
+  }
+
+  // System-wide memory
+  const sysMem = clean.match(/(\d+(?:\.\d+)?)\s*(GB|MB)\s*\/\s*(\d+(?:\.\d+)?)\s*(GB|MB)[^\n]*?(?:system|physical|RAM)?/i);
+  if (sysMem && !out.heapUsedMb) {
+    const toMb = (v, u) => u.toUpperCase() === 'GB' ? parseFloat(v) * 1024 : parseFloat(v);
+    out.ramUsedMb  = Math.round(toMb(sysMem[1], sysMem[2]));
+    out.ramTotalMb = Math.round(toMb(sysMem[3], sysMem[4]));
+  }
+
+  // TPS — percentiles from spark
+  const tpsLine = clean.match(/TPS[^:]*:\s*([\d.,\s]+)/i);
+  if (tpsLine) {
+    const nums = tpsLine[1].split(/[,\s]+/).map(s => parseFloat(s)).filter(n => !isNaN(n) && n > 0 && n <= 20);
+    if (nums.length > 0) out.tps = nums[0]; // first = most recent (10s)
+  }
+
+  // MSPT
+  const msptLine = clean.match(/(?:MSPT|Tick durations)[^:]*:\s*([\d.\/\s]+)/i);
+  if (msptLine) {
+    const first = msptLine[1].match(/(\d+(?:\.\d+)?)/);
+    if (first) out.msptMedian = parseFloat(first[1]);
+  }
+
+  return Object.keys(out).length > 0 ? out : null;
+}
+
+module.exports = { pingServer, getTPS, getPlayerList, getPlugins, getSparkHealth, parsePlugins, parsePlayerList, parseSparkHealth, stripColorCodes };
