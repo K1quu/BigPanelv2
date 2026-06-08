@@ -27,8 +27,8 @@ router.get('/:serverId', requireAuth, (req, res) => {
   }
 
   const serverPaths = {
-    lobby: process.env.LOBBY_SERVER_PATH,
-    game:  process.env.GAME_SERVER_PATH,
+    lobby: process.env.LOBBY_SERVER_PATH || '/home/hotmine/servers/Lobby-1',
+    game:  process.env.GAME_SERVER_PATH  || '/home/hotmine/servers/Lite-1',
   };
 
   const serverPath = serverPaths[serverId];
