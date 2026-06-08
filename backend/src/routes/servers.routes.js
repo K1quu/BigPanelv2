@@ -7,6 +7,7 @@ const db = require('../db/database');
 const audit = require('../services/audit.service');
 const health = require('../services/health.service');
 const serverstats = require('../services/serverstats.service');
+const mc = require('../services/minecraft.service');
 
 router.get('/', requireAuth, (req, res) => {
   res.json(getState());
@@ -19,18 +20,22 @@ router.get('/:id', requireAuth, (req, res) => {
 });
 
 // Detailed stats with plugin breakdown, network, history
-router.get('/:id/details', requireAuth, (req, res) => {
+router.get('/:id/details', requireAuth, async (req, res) => {
   const id = req.params.id;
   const server = getState().find(s => s.id === id);
   if (!server) return res.status(404).json({ error: 'Сервер не найден' });
   if (!['lobby', 'game'].includes(id)) {
-    // Proxy doesn't have plugin breakdown
     return res.json({ server, plugins: [], history: null, network: null });
   }
   const range = parseInt(req.query.range, 10) || 3600;
+
+  // Get real plugin list via RCON (same source as /api/plugins/:id)
+  let realPlugins = [];
+  try { realPlugins = await mc.getPlugins(id); } catch {}
+
   res.json({
     server,
-    plugins: serverstats.getPluginBreakdown(id, server.health?.cpuProcess || 20),
+    plugins: serverstats.getPluginBreakdown(id, server.health?.cpuProcess || 20, realPlugins),
     network: serverstats.getNetwork(id, server.players || 0),
     uptime:  serverstats.getUptime(id),
     avgPing: serverstats.getAvgPing(server.players || 0),

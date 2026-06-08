@@ -55,12 +55,43 @@ function smoothNoise(t, bucketSec) {
   return a * (1 - u) + c * u;
 }
 
+function hashStr(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
 /**
- * Distribute totalCpuPct across plugins, weighted by their base weight.
- * Adds individual fluctuation per plugin so percentages drift naturally.
+ * For an unknown plugin name, derive stable (name-deterministic) weight + memMb.
+ * This way the same plugin name always gets the same baseline values.
  */
-function getPluginBreakdown(serverId, totalCpuPct) {
-  const list = PLUGINS[serverId] || [];
+function deriveEntry(name) {
+  const h = hashStr(name);
+  // Weight 2..22
+  const weight = 2 + (h % 21);
+  // Memory 12..240 MB
+  const memMb = 12 + ((h >>> 5) % 229);
+  return { name, weight, memMb };
+}
+
+/**
+ * Build plugin breakdown for the given total CPU%.
+ * @param {string} serverId — 'lobby' | 'game'
+ * @param {number} totalCpuPct — total process CPU % to distribute
+ * @param {string[]} [realPlugins] — actual plugin names from RCON (preferred)
+ */
+function getPluginBreakdown(serverId, totalCpuPct, realPlugins = null) {
+  // Build base list:
+  //  - If real plugin names available — use those, derive weights stable from hash
+  //  - Otherwise fall back to hardcoded reference list
+  let list;
+  if (realPlugins && realPlugins.length > 0) {
+    const known = new Map((PLUGINS[serverId] || []).map(p => [p.name, p]));
+    list = realPlugins.map(name => known.get(name) || deriveEntry(name));
+  } else {
+    list = PLUGINS[serverId] || [];
+  }
+
   const ts = Math.floor(Date.now() / 1000);
   const totalWeight = list.reduce((a, p) => a + p.weight, 0);
 
