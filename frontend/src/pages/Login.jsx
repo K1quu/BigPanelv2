@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Lock, User, ArrowRight } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../App';
+import Logo from '../components/Logo';
 
 export default function Login() {
   const { user, setUser } = useAuth();
@@ -55,9 +56,9 @@ export default function Login() {
 
           {/* Brand */}
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-md bg-gradient-to-br from-grass to-grass-dim flex items-center justify-center"
-              style={{ boxShadow: '0 0 20px rgba(90,196,77,0.3)' }}>
-              <span className="font-mono font-bold text-[#0a1a07] text-base">MC</span>
+            <div className="w-11 h-11 flex items-center justify-center text-grass-bright"
+              style={{ filter: 'drop-shadow(0 0 16px rgba(90,196,77,0.4))' }}>
+              <Logo size={40} />
             </div>
             <div>
               <div className="text-fg-0 font-bold text-base">MC Panel</div>

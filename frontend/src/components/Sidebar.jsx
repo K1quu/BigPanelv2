@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Server, Users, Terminal, Puzzle, Globe, LogOut, Settings, X } from 'lucide-react';
 import { useAuth } from '../App';
 import api from '../services/api';
+import Logo from './Logo';
 
 const nav = [
   { to: '/',        label: 'Дашборд',  Icon: LayoutDashboard },
@@ -40,8 +41,8 @@ export default function Sidebar({ mobileOpen = false, onClose }) {
       </button>
       {/* Brand */}
       <div className="flex items-center gap-3 px-4 py-5 border-b border-border-1">
-        <div className="w-8 h-8 rounded-md bg-gradient-to-br from-grass to-grass-dim flex items-center justify-center shadow-lg">
-          <span className="font-mono font-bold text-[#0a1a07] text-sm">MC</span>
+        <div className="w-9 h-9 flex items-center justify-center text-grass-bright" style={{ filter: 'drop-shadow(0 0 8px rgba(90,196,77,0.35))' }}>
+          <Logo size={32} />
         </div>
         <div>
           <div className="text-fg-0 font-semibold text-sm leading-tight">MC Panel</div>

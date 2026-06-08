@@ -3,6 +3,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
 import api from './services/api';
 import Sidebar from './components/Sidebar';
+import Logo from './components/Logo';
 import Login    from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Servers   from './pages/Servers';
@@ -44,7 +45,7 @@ function Layout({ children }) {
             <Menu size={18} />
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-gradient-to-br from-grass to-grass-dim flex items-center justify-center text-[#0a1a07] text-[10px] font-mono font-bold">MC</div>
+            <Logo size={22} className="text-grass-bright" />
             <span className="text-fg-0 font-semibold text-sm">MC Panel</span>
           </div>
           <div className="w-7" />

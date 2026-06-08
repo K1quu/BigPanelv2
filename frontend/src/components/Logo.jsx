@@ -1,0 +1,36 @@
+export default function Logo({ size = 28, className = '', style = {} }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 64 64"
+      fill="none"
+      className={className}
+      style={style}
+    >
+      <g stroke="currentColor" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round">
+        <path d="M44 8 L56 14 L56 28 L44 34 L32 28 L32 14 Z" />
+        <path d="M32 14 L44 20 L56 14" />
+        <path d="M44 20 L44 34" />
+      </g>
+      <g stroke="currentColor" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round">
+        <rect x="6"  y="26" width="30" height="11" rx="2" />
+        <rect x="6"  y="39" width="34" height="11" rx="2" />
+        <rect x="6"  y="52" width="34" height="9"  rx="2" />
+      </g>
+      <g fill="currentColor">
+        <circle cx="12" cy="31.5" r="1.6" />
+        <circle cx="18" cy="31.5" r="1.6" />
+        <circle cx="12" cy="44.5" r="1.6" />
+        <circle cx="18" cy="44.5" r="1.6" />
+        <circle cx="12" cy="56.5" r="1.6" />
+        <circle cx="18" cy="56.5" r="1.6" />
+      </g>
+      <g fill="currentColor" opacity="0.8">
+        <rect x="28" y="43.5" width="8" height="2" rx="1" />
+        <rect x="28" y="56" width="8" height="2" rx="1" />
+      </g>
+    </svg>
+  );
+}
