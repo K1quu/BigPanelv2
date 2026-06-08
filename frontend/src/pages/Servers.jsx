@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Wifi, WifiOff, RotateCw, Power, Play, Cpu, MemoryStick, Activity, HardDrive } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Wifi, WifiOff, RotateCw, Power, Play, Cpu, MemoryStick, Activity, HardDrive, ChevronRight } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../App';
 import { connectWS, disconnectWS, onMessage } from '../services/websocket';
@@ -197,10 +198,18 @@ function ServerDetail({ server, onAction }) {
         </div>
 
         {server.type !== 'proxy' && (
-          <div className="mb-5">
-            <div className="text-fg-2 text-xs font-medium mb-2">Состояние сервера</div>
-            <HealthSection health={server.health} />
-          </div>
+          <>
+            <div className="mb-5">
+              <div className="text-fg-2 text-xs font-medium mb-2">Состояние сервера</div>
+              <HealthSection health={server.health} />
+            </div>
+
+            <Link to={`/servers/${server.id}`}
+              className="flex items-center justify-center gap-2 w-full h-10 rounded-md bg-bg-2 border border-border-2 text-fg-1 text-sm font-medium hover:bg-bg-3 hover:text-fg-0 hover:border-border-3 transition-colors">
+              Подробная статистика
+              <ChevronRight size={14} />
+            </Link>
+          </>
         )}
 
         {history.length > 0 && (

@@ -5,6 +5,36 @@ const rcon = require('./rcon.service');
 // State: { lobby: { cpuProcess, cpuSystem, heapUsedMb, heapTotalMb, ramUsedMb, ramTotalMb, msptMedian, source, updatedAt } }
 const state = { lobby: {}, game: {} };
 
+// History: ring buffers of last 720 points (60 min at 5s tick)
+const HISTORY_MAX = 720;
+const history = {
+  lobby: { tps: [], mspt: [], cpuProcess: [], heapPct: [] },
+  game:  { tps: [], mspt: [], cpuProcess: [], heapPct: [] },
+};
+
+function pushHistory(serverId, point) {
+  const h = history[serverId];
+  if (!h) return;
+  const ts = Math.floor(Date.now() / 1000);
+  for (const key of Object.keys(point)) {
+    if (point[key] == null) continue;
+    h[key].push({ t: ts, v: point[key] });
+    if (h[key].length > HISTORY_MAX) h[key].shift();
+  }
+}
+
+function getHistory(serverId, range = 3600) {
+  const h = history[serverId];
+  if (!h) return null;
+  const cutoff = Math.floor(Date.now() / 1000) - range;
+  return {
+    tps:        h.tps.filter(p => p.t >= cutoff),
+    mspt:       h.mspt.filter(p => p.t >= cutoff),
+    cpuProcess: h.cpuProcess.filter(p => p.t >= cutoff),
+    heapPct:    h.heapPct.filter(p => p.t >= cutoff),
+  };
+}
+
 // Per-server config for simulated metrics
 const SIM_CONFIG = {
   lobby: { heapTotal: 4096,  ramTotal: 16384, baseCpu: 8,  baseHeap: 0.30 },
@@ -86,6 +116,16 @@ async function refresh(serverId, ctx = {}) {
 
   // Use simulation
   state[serverId] = simulate(serverId, players || 0);
+
+  // Record history
+  const h = state[serverId];
+  const heapPct = h.heapTotalMb ? (h.heapUsedMb / h.heapTotalMb) * 100 : null;
+  pushHistory(serverId, {
+    tps: ctx.tps,
+    mspt: h.msptMedian,
+    cpuProcess: h.cpuProcess,
+    heapPct,
+  });
 }
 
 function get(serverId) {
@@ -96,4 +136,4 @@ function getAll() {
   return state;
 }
 
-module.exports = { refresh, get, getAll };
+module.exports = { refresh, get, getAll, getHistory };

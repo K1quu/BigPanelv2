@@ -167,8 +167,8 @@ async function fastTick() {
 
   // Refresh server health (spark or simulation)
   await Promise.all([
-    health.refresh('lobby', { online: state.lobby.online, players: state.lobby.players }),
-    health.refresh('game',  { online: state.game.online,  players: state.game.players  }),
+    health.refresh('lobby', { online: state.lobby.online, players: state.lobby.players, tps: state.lobby.tps }),
+    health.refresh('game',  { online: state.game.online,  players: state.game.players,  tps: state.game.tps  }),
   ]);
   state.lobby.health = health.get('lobby');
   state.game.health  = health.get('game');

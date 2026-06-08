@@ -7,6 +7,7 @@ import Logo from './components/Logo';
 import Login    from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Servers   from './pages/Servers';
+import ServerDetail from './pages/ServerDetail';
 import Players   from './pages/Players';
 import Console   from './pages/Console';
 import Plugins   from './pages/Plugins';
@@ -89,6 +90,7 @@ export default function App() {
                 <Routes>
                   <Route path="/"        element={<Dashboard />} />
                   <Route path="/servers" element={<Servers />} />
+                  <Route path="/servers/:id" element={<ServerDetail />} />
                   <Route path="/players" element={<Players />} />
                   <Route path="/console" element={<Console />} />
                   <Route path="/plugins" element={<Plugins />} />
