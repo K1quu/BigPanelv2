@@ -52,40 +52,62 @@ function rangeForHour(hour) {
   return [r1[0] + (r2[0] - r1[0]) * t, r1[1] + (r2[1] - r1[1]) * t];
 }
 
+// Deterministic pseudo-random in [0,1) based on integer seed
+function hash01(n) {
+  n = (n ^ 61) ^ (n >>> 16);
+  n = (n + (n << 3)) | 0;
+  n = n ^ (n >>> 4);
+  n = Math.imul(n, 0x27d4eb2d);
+  n = n ^ (n >>> 15);
+  return ((n >>> 0) % 100000) / 100000;
+}
+
+// Smooth value noise: interpolate hash01 between buckets
+function smoothNoise(t, bucketSec) {
+  const b = Math.floor(t / bucketSec);
+  const f = (t / bucketSec) - b;
+  const u = f * f * (3 - 2 * f); // smoothstep
+  const a = hash01(b);
+  const c = hash01(b + 1);
+  return a * (1 - u) + c * u;
+}
+
 // Stateless version — for backfilling history with synthetic values
 function velocityAtTime(ts) {
   const d = new Date(ts * 1000);
   const hour = d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
   const [minVal, maxVal] = rangeForHour(hour);
-  // Deterministic-ish jitter so chart isn't flat
-  const seed = Math.sin(ts * 0.01) * 0.5 + 0.5;
-  return Math.round(minVal + seed * (maxVal - minVal));
+  const mid = (minVal + maxVal) / 2;
+  const halfRange = (maxVal - minVal) / 2;
+
+  // Multi-scale noise so curve doesn't look periodic:
+  //  - large slow waves (~30 min period)
+  //  - medium ripples (~5 min period)
+  //  - small jitter (~1 min period)
+  const slow   = (smoothNoise(ts, 1800) - 0.5) * 2;  // -1..1
+  const medium = (smoothNoise(ts, 300)  - 0.5) * 2;
+  const small  = (smoothNoise(ts, 60)   - 0.5) * 2;
+
+  // Weighted sum; dominant is slow
+  const noise = slow * 0.65 + medium * 0.25 + small * 0.10;
+  const val = mid + noise * halfRange;
+  return Math.max(50, Math.round(val));
 }
 
 function computeVelocityOnline() {
-  const now = Date.now();
-  const d = new Date();
-  // Hour in fractional form for smoothness
-  const hour = d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
-  const [minVal, maxVal] = rangeForHour(hour);
+  // Use the same noise-based time function as backfill for full continuity
+  // between historical and live data.
+  const ts = Math.floor(Date.now() / 1000);
+  const baseline = velocityAtTime(ts);
 
-  // Pick a new target every 30-60 seconds inside current range
-  if (now >= velocityState.nextTargetAt || velocityState.target === null) {
-    velocityState.target = Math.round(minVal + Math.random() * (maxVal - minVal));
-    velocityState.nextTargetAt = now + (30 + Math.random() * 30) * 1000;
-  }
-
-  // First tick — snap to a random value inside range
   if (velocityState.current === null) {
-    velocityState.current = velocityState.target;
+    velocityState.current = baseline;
+    return velocityState.current;
   }
 
-  // Smooth drift toward target (10% per tick) + tiny jitter
-  const delta = velocityState.target - velocityState.current;
-  velocityState.current = Math.round(velocityState.current + delta * 0.1 + (Math.random() - 0.5) * 4);
-
-  // Clamp to range
-  velocityState.current = Math.max(50, Math.min(3000, velocityState.current));
+  // Drift smoothly toward baseline (5% per tick — very gentle)
+  const delta = baseline - velocityState.current;
+  velocityState.current = Math.round(velocityState.current + delta * 0.05);
   return velocityState.current;
 }
 
@@ -240,12 +262,17 @@ function getState() {
 }
 
 function backfillHistory() {
-  // Find last history timestamp; backfill any gap > 60s with synthetic points every 30s.
-  const last = db.prepare('SELECT MAX(timestamp) AS t FROM online_history').get();
   const now = Math.floor(Date.now() / 1000);
-  const lastTs = last?.t || (now - 60); // if empty, just go back 1 min
+  const last = db.prepare('SELECT MAX(timestamp) AS t FROM online_history').get();
+  let lastTs = last?.t || (now - 60);
   const gap = now - lastTs;
-  if (gap < 60) return; // no real gap
+  if (gap < 60) return;
+
+  // If gap is huge (> 24h) or no data — pre-fill last 24h so chart looks full
+  const DAY = 24 * 3600;
+  if (gap > DAY || !last?.t) {
+    lastTs = now - DAY;
+  }
 
   const STEP = 30;
   const insert = db.prepare(
@@ -256,7 +283,10 @@ function backfillHistory() {
   try {
     for (let ts = lastTs + STEP; ts < now; ts += STEP) {
       const vel = velocityAtTime(ts);
-      const lob = 50 + Math.round((Math.sin(ts * 0.013) * 0.5 + 0.5) * 50);
+      // Lobby: 50-100 organic noise
+      const lob = vel < 250
+        ? Math.round(vel * 0.25)
+        : 50 + Math.round(smoothNoise(ts + 7777, 600) * 50);
       const gam = Math.max(0, vel - lob);
       insert.run('velocity', vel, null, ts);
       insert.run('lobby',    lob, 20, ts);
