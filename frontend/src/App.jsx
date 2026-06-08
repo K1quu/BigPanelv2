@@ -9,6 +9,7 @@ import Servers   from './pages/Servers';
 import Players   from './pages/Players';
 import Console   from './pages/Console';
 import Plugins   from './pages/Plugins';
+import Worlds    from './pages/Worlds';
 import Users     from './pages/Users';
 
 export const AuthCtx = createContext(null);
@@ -90,6 +91,7 @@ export default function App() {
                   <Route path="/players" element={<Players />} />
                   <Route path="/console" element={<Console />} />
                   <Route path="/plugins" element={<Plugins />} />
+                  <Route path="/worlds"  element={<Worlds />} />
                   <Route path="/users"   element={<Users />} />
                   <Route path="*"        element={<Navigate to="/" replace />} />
                 </Routes>

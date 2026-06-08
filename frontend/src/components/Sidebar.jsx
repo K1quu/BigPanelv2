@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Server, Users, Terminal, Puzzle, LogOut, Settings, X } from 'lucide-react';
+import { LayoutDashboard, Server, Users, Terminal, Puzzle, Globe, LogOut, Settings, X } from 'lucide-react';
 import { useAuth } from '../App';
 import api from '../services/api';
 
@@ -9,6 +9,7 @@ const nav = [
   { to: '/players', label: 'Игроки',   Icon: Users },
   { to: '/console', label: 'Консоль',  Icon: Terminal },
   { to: '/plugins', label: 'Плагины',  Icon: Puzzle },
+  { to: '/worlds',  label: 'Миры',     Icon: Globe },
   { to: '/users',   label: 'Настройки',Icon: Settings, onlySuperadmin: true },
 ];
 
