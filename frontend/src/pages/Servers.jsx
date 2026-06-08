@@ -198,14 +198,7 @@ function ServerDetail({ server, onAction }) {
 
         {server.type !== 'proxy' && (
           <div className="mb-5">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-fg-2 text-xs font-medium">Состояние сервера</div>
-              {server.health?.source && (
-                <span className="text-fg-3 text-[10px] font-mono">
-                  {server.health.source === 'spark' ? 'spark profiler' : 'мониторинг'}
-                </span>
-              )}
-            </div>
+            <div className="text-fg-2 text-xs font-medium mb-2">Состояние сервера</div>
             <HealthSection health={server.health} />
           </div>
         )}

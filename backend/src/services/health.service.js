@@ -75,8 +75,8 @@ async function refresh(serverId, ctx = {}) {
     return;
   }
 
-  // Try spark health first
-  if (rcon.isConnected(serverId)) {
+  // Optional: try spark health if explicitly enabled
+  if (process.env.SPARK_ENABLED === 'true' && rcon.isConnected(serverId)) {
     const health = await mc.getSparkHealth(serverId);
     if (health) {
       state[serverId] = { ...health, source: 'spark', updatedAt: Date.now() };
@@ -84,7 +84,7 @@ async function refresh(serverId, ctx = {}) {
     }
   }
 
-  // Fallback to simulation
+  // Use simulation
   state[serverId] = simulate(serverId, players || 0);
 }
 
